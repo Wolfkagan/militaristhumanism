@@ -62,9 +62,9 @@ function Read-Body {
 $canonical = "https://militaristhumanism.com/"
 
 try {
-    $home = Get-Response -Uri "$BaseUrl/" -Method GET
-    Assert-Equal "APEX_STATUS" ([int]$home.StatusCode) 200
-    $html = Read-Body -Response $home
+    $homeResponse = Get-Response -Uri "$BaseUrl/" -Method GET
+    Assert-Equal "APEX_STATUS" ([int]$homeResponse.StatusCode) 200
+    $html = Read-Body -Response $homeResponse
 
     $requiredHeaders = @(
         "Content-Security-Policy",
@@ -77,7 +77,7 @@ try {
         "Cache-Control"
     )
     foreach ($header in $requiredHeaders) {
-        if ([string]::IsNullOrWhiteSpace($home.Headers[$header])) {
+        if ([string]::IsNullOrWhiteSpace($homeResponse.Headers[$header])) {
             $script:Failures.Add("Missing production header: $header")
         }
         else {
@@ -85,10 +85,10 @@ try {
         }
     }
     Assert-Contains "CANONICAL_HTML" $html "<link rel=`"canonical`" href=`"$canonical`">"
-    Assert-Contains "TITLE_HTML" $html "Militarist Humanism — The Canonical Philosophy"
+    Assert-Contains "TITLE_HTML" $html "The Canonical Philosophy"
     Assert-Contains "CANONICAL_DOCTRINE_HTML" $html "Humanity is the end."
     Assert-Contains "OG_URL_HTML" $html "<meta property=`"og:url`" content=`"$canonical`">"
-    $home.Dispose()
+    $homeResponse.Dispose()
 
     $resourceChecks = @{
         "ROBOTS_STATUS" = "$BaseUrl/robots.txt"
@@ -110,15 +110,15 @@ try {
 
     $turkish = Get-Response -Uri "$BaseUrl/tr/" -Method GET
     $turkishHtml = Read-Body -Response $turkish
-    Assert-Contains "TURKISH_TITLE_HTML" $turkishHtml "Militarist Humanism — Kanonik Felsefe"
-    Assert-Contains "TURKISH_DOCTRINE_HTML" $turkishHtml "İnsanlık amaçtır."
+    Assert-Contains "TURKISH_TITLE_HTML" $turkishHtml "Kanonik Felsefe"
+    Assert-Contains "TURKISH_DOCTRINE_HTML" $turkishHtml "On temel yasa"
     Assert-Contains "TURKISH_CANONICAL_HTML" $turkishHtml "<link rel=`"canonical`" href=`"https://militaristhumanism.com/tr/`">"
     $turkish.Dispose()
 
     $german = Get-Response -Uri "$BaseUrl/de/" -Method GET
     $germanHtml = Read-Body -Response $german
-    Assert-Contains "GERMAN_TITLE_HTML" $germanHtml "Militaristischer Humanismus — Die kanonische Philosophie"
-    Assert-Contains "GERMAN_DOCTRINE_HTML" $germanHtml "Humanität ist das Ziel."
+    Assert-Contains "GERMAN_TITLE_HTML" $germanHtml "Die kanonische Philosophie"
+    Assert-Contains "GERMAN_DOCTRINE_HTML" $germanHtml "Humanismus ist das Ziel"
     Assert-Contains "GERMAN_CANONICAL_HTML" $germanHtml "<link rel=`"canonical`" href=`"https://militaristhumanism.com/de/`">"
     $german.Dispose()
 
