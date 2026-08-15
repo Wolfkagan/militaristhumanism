@@ -6,10 +6,11 @@
 - Production domain: `https://militaristhumanism.com/`
 - Repository: `Wolfkagan/militaristhumanism`
 - Branch target: `main`
-- Commit SHA: not assigned before commit
+- Source commit SHA: `1003741a0f21c8a6efbe5ace8cdbdcd76692dbd0`
 - Release tag: not created before production verification
-- Cloudflare project: not yet independently observed
-- Generated Pages hostname: not yet independently observed
+- Preserved Cloudflare Worker: `militaristhumanism`
+- Canonical Cloudflare Pages project: `militaristhumanism`
+- Generated Pages hostname: `https://militaristhumanism.pages.dev/`
 
 ## Gate summary
 
@@ -21,20 +22,22 @@ LOCAL_RENDER=HOLD_PUBLIC_RECHECK
 ACCESSIBILITY_BASELINE=PASS_STATIC
 SEO_BASELINE=PASS
 SECURITY_HEADERS=PASS_SOURCE
-SHA256_MANIFEST=PENDING_FINAL_REGENERATION
-GITHUB_REPOSITORY_ACCESS=PASS_CONNECTOR
-GITHUB_REMOTE_STATE=EMPTY_REPOSITORY
-GITHUB_PUSH=NOT_RUN
-GITHUB_CI=NOT_VERIFIED
-CLOUDFLARE_REPOSITORY_CLONE=NOT_VERIFIED
-CLOUDFLARE_BUILD=NOT_VERIFIED
+SHA256_MANIFEST=PASS
+GITHUB_REPOSITORY_ACCESS=PASS
+GITHUB_REMOTE_MAIN=PASS
+GITHUB_PUSH=PASS
+GITHUB_CI=PASS
+CLOUDFLARE_ORIGINAL_WORKER_BUILD=PASS
+CLOUDFLARE_PAGES_PROJECT=PASS_CREATED
+CLOUDFLARE_REPOSITORY_CLONE=PENDING_FIRST_PAGES_BUILD
+CLOUDFLARE_BUILD=PENDING_FIRST_PAGES_BUILD
 CLOUDFLARE_DEPLOY=NOT_VERIFIED
 CUSTOM_APEX_DOMAIN=NOT_VERIFIED
 HTTPS=NOT_VERIFIED
 WWW_TO_APEX_REDIRECT=NOT_VERIFIED
 PAGES_DEV_TO_CUSTOM_REDIRECT=NOT_VERIFIED
 DNSSEC_PRESERVATION=PASS_NO_CHANGE
-FINAL_RESULT=HOLD_EXTERNAL_AUTHORIZATION
+FINAL_RESULT=IN_PROGRESS
 ```
 
 ## Implemented release tree
@@ -88,13 +91,15 @@ OG_IMAGE=1200x630
 APPLE_TOUCH_ICON=180x180
 ```
 
-The exact SHA-256 values are stored in `evidence/FILE_MANIFEST_SHA256.txt` and will be regenerated after this report is finalized.
+The exact SHA-256 values are stored in `evidence/FILE_MANIFEST_SHA256.txt` and are regenerated after every evidence change.
 
 ## Known limitations
 
-GitHub repository discovery now passes through the connected GitHub account, and the repository is proven empty with administrative write permission. Local GitHub CLI device approval remains in progress before the first push.
+The repository was initially empty. GitHub authentication, the first push to `main`, the exact remote commit, and the GitHub Actions run now pass.
 
-Cloudflare dashboard authentication remains unavailable. Project type, Cloudflare GitHub App repository scope, build settings, generated Pages hostname, custom domain, certificate, and redirects remain unverified. External DNS currently returns the expected nameservers and a DS record but no apex address record or `www` alias, so the website is not yet publicly reachable.
+The original Cloudflare application was proven to be a Worker with Workers Builds. It was preserved because the safety policy prohibits deleting a successful deployment. It has no secrets, bindings, routes, or custom domains. A separate canonical Pages project is now connected to the exact GitHub repository with the required build settings; its first Git-triggered deployment is pending the next commit.
+
+External DNS still returns the expected nameservers and a DS record but no apex address record or `www` alias, so the custom production domain is not yet publicly reachable.
 
 The final compact browser render, keyboard sequence, branded 404 response, console log count, live headers, and redirects must be measured against the deployed Pages URL. No PASS is claimed for those external checks yet.
 

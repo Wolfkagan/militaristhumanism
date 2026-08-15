@@ -66,14 +66,16 @@ The absence of an apex address record and `www` alias means the production site 
 ## Discovery gate
 
 ```text
-DISCOVERY_GATE=PARTIAL_PASS
+DISCOVERY_GATE=PASS
 PRE_CHANGE_COMMIT=EMPTY_LOCAL_REPOSITORY
 REPOSITORY=Wolfkagan/militaristhumanism
 PRODUCTION_BRANCH=main
 GITHUB_REPOSITORY_DISCOVERY=PASS
-GITHUB_CLI_AUTH=IN_PROGRESS
-CLOUDFLARE_DISCOVERY=HOLD_EXTERNAL_AUTHORIZATION
-EXACT_BLOCKER=Authenticated Cloudflare dashboard access is not yet available to this task
+GITHUB_CLI_AUTH=PASS
+CLOUDFLARE_DISCOVERY=PASS
+CLOUDFLARE_ORIGINAL_PROJECT_TYPE=WORKER
+CLOUDFLARE_PAGES_PROJECTS_AT_DISCOVERY=0
+EXACT_BLOCKER=NONE
 ```
 
-This HOLD records missing external evidence; it is not a release pass.
+Follow-up authentication confirmed that the original Cloudflare application was a Worker with Workers Builds, not Pages. Its successful third version contained the static assets, no bindings, no secrets, no routes, and no custom domains. The Worker was preserved. A separate Git-connected Pages project was then created non-destructively.
