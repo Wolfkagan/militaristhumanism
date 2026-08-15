@@ -52,6 +52,16 @@ function Assert-Contains {
     }
 }
 
+function Assert-NotContains {
+    param([string]$Name, [string]$Actual, [string]$Forbidden)
+    if (-not [string]::IsNullOrEmpty($Actual) -and $Actual.Contains($Forbidden)) {
+        $script:Failures.Add("$Name contains forbidden value '$Forbidden'")
+    }
+    else {
+        $script:Evidence.Add("$Name=PASS")
+    }
+}
+
 function Read-Body {
     param([Net.HttpWebResponse]$Response)
     $reader = New-Object IO.StreamReader($Response.GetResponseStream())
@@ -87,7 +97,14 @@ try {
     Assert-Contains "CANONICAL_HTML" $html "<link rel=`"canonical`" href=`"$canonical`">"
     Assert-Contains "TITLE_HTML" $html "The Canonical Philosophy"
     Assert-Contains "CANONICAL_DOCTRINE_HTML" $html "Humanity is the end."
+    Assert-Contains "DESCRIPTION_HTML" $html "The canonical philosophy that makes human dignity the end"
     Assert-Contains "OG_URL_HTML" $html "<meta property=`"og:url`" content=`"$canonical`">"
+    Assert-Contains "OG_IMAGE_HTML" $html "https://militaristhumanism.com/assets/og-image.png"
+    $loopbackName = "local" + "host"
+    $draftDomain = "example" + ".com"
+    Assert-NotContains "NO_LOCAL_HOST_HTML" $html $loopbackName
+    Assert-NotContains "NO_DRAFT_DOMAIN_HTML" $html $draftDomain
+    Assert-NotContains "NO_INSECURE_REFERENCE_HTML" $html "http://"
     $homeResponse.Dispose()
 
     $resourceChecks = @{
@@ -106,6 +123,8 @@ try {
 
     $notFound = Get-Response -Uri "$BaseUrl/nonexistent-path-v01-verification" -Method GET
     Assert-Equal "NOT_FOUND_STATUS" ([int]$notFound.StatusCode) 404
+    $notFoundHtml = Read-Body -Response $notFound
+    Assert-Contains "NOT_FOUND_BODY" $notFoundHtml "Page Not Found"
     $notFound.Dispose()
 
     $turkish = Get-Response -Uri "$BaseUrl/tr/" -Method GET
