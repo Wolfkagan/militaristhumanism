@@ -2,7 +2,7 @@
 
 Production source for [militaristhumanism.com](https://militaristhumanism.com/).
 
-Militarist Humanism is presented here as an ethical philosophy of disciplined capability placed under human dignity, law, accountability, and service. This repository contains the V0.1 public statement in English, Turkish, and German, together with its release-verification tooling.
+Militarist Humanism is presented here as a canonical doctrine that makes human life, dignity, freedom, and development its highest ends, while placing disciplined strength, strategic reason, legitimate authority, and self-restraint in their service. This repository contains the complete V0.1 philosophical publication in English, Turkish, and German, together with its release-verification tooling.
 
 ## Architecture
 
@@ -62,6 +62,6 @@ Do not commit credentials, tokens, private keys, or local environment files.
 
 ## Content status
 
-This is a philosophical publication, not a political party, militia, paramilitary organization, legal entity, or call to violence. No membership, institutional endorsement, or official contact channel is claimed in V0.1.
+This is a philosophical publication, not a political party, militia, paramilitary organization, legal entity, or call to violence. Its canonical counter-definition expressly rejects war worship, blind obedience, military rule, cults of leadership, ethnic supremacy, expansionism, the instrumentalization of people, and oppression disguised by humanitarian language.
 
 No open-source license has been assigned. All questions of reuse beyond ordinary reading, quotation, and applicable law remain with the owner until an explicit licensing decision is published.

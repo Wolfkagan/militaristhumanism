@@ -207,7 +207,7 @@ def main() -> int:
 
     add(errors, parser.html_lang == "en", "Homepage language must be English")
     add(errors, bool(parser.title), "Missing or empty document title")
-    add(errors, parser.title == "Militarist Humanism — Discipline, Strength, Humanity", "Unexpected homepage title")
+    add(errors, parser.title == "Militarist Humanism — The Canonical Philosophy", "Unexpected homepage title")
     description = meta_value(parser, name="description")
     add(errors, bool(description and 70 <= len(description) <= 180), "Missing or unsuitable meta description")
     viewport = meta_value(parser, name="viewport")
@@ -273,13 +273,13 @@ def main() -> int:
         "tr": {
             "path": PUBLIC / "tr" / "index.html",
             "canonical": "https://militaristhumanism.com/tr/",
-            "title": "Militarist Hümanizm — Disiplin, Güç, İnsanlık",
+            "title": "Militarist Humanism — Kanonik Felsefe",
             "locale": "tr_TR",
         },
         "de": {
             "path": PUBLIC / "de" / "index.html",
             "canonical": "https://militaristhumanism.com/de/",
-            "title": "Militaristischer Humanismus — Disziplin, Stärke, Menschlichkeit",
+            "title": "Militaristischer Humanismus — Die kanonische Philosophie",
             "locale": "de_DE",
         },
     }

@@ -1,38 +1,36 @@
 # QA report — Militarist Humanism V0.1
 
-## Scope
+## Scope and capture
 
-This report records local static validation, rendered layout checks, accessibility-oriented review, asset checks, and runtime observations for the framework-free `public/` output.
-
-## Current gate state
+This report covers the framework-free English, Turkish, and German publication after the canonical-content replacement. The final local capture was completed on `2026-08-15` before the release push.
 
 ```text
 STATIC_VALIDATION=PASS
 LOCAL_HTTP=PASS
-RESPONSIVE_LAYOUT_INITIAL_PASS=PASS
-FINAL_RENDER_RECHECK=HOLD_PUBLIC_URL
-LOCAL_RENDER=HOLD_RECHECK
-ACCESSIBILITY_BASELINE=PASS_STATIC
+LOCAL_RENDER=PASS
+RESPONSIVE_CHECKS=21/21_PASS
+ACCESSIBILITY_BASELINE=PASS
 SEO_BASELINE=PASS
 SECURITY_HEADERS=PASS_SOURCE
 BROKEN_LINKS=0
 MISSING_ASSETS=0
-CONSOLE_ERRORS=NOT_MEASURED
+CONSOLE_ERRORS=0
+PUBLIC_FORBIDDEN_NAME_MATCHES=0
 LIGHTHOUSE_ACCESSIBILITY=NOT_MEASURED
 LIGHTHOUSE_BEST_PRACTICES=NOT_MEASURED
 LIGHTHOUSE_SEO=NOT_MEASURED
 LIGHTHOUSE_PERFORMANCE_MOBILE=NOT_MEASURED
 ```
 
-The report is updated only from captured test output. Unmeasured scores are never inferred.
+Unmeasured scores are not inferred or reported as passes.
 
 ## Static validation
 
-Captured at `2026-08-15T13:49:00Z`:
+The Python standard-library validator returned:
 
 ```text
-REQUIRED_FILES=23
-HTML_IDS=20
+REQUIRED_FILES=26
+HTML_IDS=21
 BROKEN_LINKS=0
 MISSING_ASSETS=0
 ACCESSIBILITY_BASELINE=PASS
@@ -41,71 +39,73 @@ SECURITY_HEADERS=PASS
 STATIC_VALIDATION=PASS
 ```
 
-The validator also confirmed that the release has no JavaScript, inline event handlers, inline styles, framework runtime, remote runtime dependency, insecure asset URL, duplicate ID, missing required section, draft marker, or obvious secret pattern.
+The validator checks the three localized pages, reciprocal `hreflang` links, canonical URLs, titles, descriptions, all nine major content sections, local references, unique IDs, image alternatives, script and inline-handler absence, security headers, sitemap, manifest, icon dimensions, draft-token patterns, and obvious secret patterns.
 
-## Local HTTP and assets
+## Canonical content checks
 
-The `public/` directory was served with the Python standard-library static server on port `4173`. Captured responses:
+- English, Turkish, and German contain the complete 19-part philosophical structure, grouped into nine readable page sections.
+- All three editions contain the ten laws, two policy tables, four judgment principles, corruption modes, ten-question decision test, canonical definition, counter-definition, and final seal.
+- The Turkish source is the canonical editorial basis; English and German are faithful editions rather than unrelated summaries.
+- The user-prohibited proper name has zero case-insensitive matches under `public/`.
+- The publication contains no invented contact address, membership, institution, endorsement, form, tracker, or analytics code.
 
-| Path | Status | Result |
-| --- | ---: | --- |
-| `/` | 200 | PASS |
-| `/robots.txt` | 200 | PASS |
-| `/sitemap.xml` | 200 | PASS |
-| `/favicon.svg` | 200 | PASS |
-| `/site.webmanifest` | 200 | PASS |
-| `/assets/brand-mark.svg` | 200 | PASS |
-| `/assets/og-image.png` | 200 | PASS |
-| `/assets/apple-touch-icon.png` | 200 | PASS |
-| `/404.html` | 200 | PASS as a directly requested source asset |
-| `/nonexistent-path` | 404 | PASS for status; Cloudflare Pages must be used to verify the branded body |
+## Responsive Chrome review
 
-Asset dimensions were read from the generated PNG files:
+Chrome measurements covered every language at every required viewport:
+
+| Viewport | English | Turkish | German |
+| --- | --- | --- | --- |
+| 320 × 568 | PASS | PASS | PASS |
+| 375 × 667 | PASS | PASS | PASS |
+| 390 × 844 | PASS | PASS | PASS |
+| 768 × 1024 | PASS | PASS | PASS |
+| 1024 × 768 | PASS | PASS | PASS |
+| 1440 × 900 | PASS | PASS | PASS |
+| 1920 × 1080 | PASS | PASS | PASS |
+
+Each of the 21 checks asserted:
+
+- no document-level horizontal overflow;
+- H1 entirely inside the viewport with nonzero size;
+- nine major sections present;
+- zero source script elements;
+- correct document language and active language selector;
+- two responsive table containers wholly inside the viewport;
+- zero rendered occurrences of the prohibited proper name.
+
+The 375-pixel Turkish mobile hero and 1440-pixel English desktop hero were also inspected visually. Navigation wraps cleanly, the title remains unclipped, the primary statement remains readable, and language controls retain visible boundaries and touch-sized targets.
+
+## Browser and interaction baseline
+
+The Chrome developer log returned an empty array after local navigation:
 
 ```text
-og-image.png=1200x630, RGB
-apple-touch-icon.png=180x180, RGB
+CONSOLE_ERRORS=0
+CONSOLE_WARNINGS=0
 ```
 
-## Responsive render review
+Keyboard use is built entirely on native anchors and document order. The skip link is the first focusable control, all navigation and language controls are native links, `:focus-visible` uses a three-pixel high-contrast outline, internal table regions are keyboard-focusable for horizontal scrolling, and there is no scripted focus management or keyboard-trap mechanism.
 
-An initial browser render pass covered all required viewports:
+## Assets and offline rendering
+
+The local server returned the homepage and language routes with their same-origin CSS, SVG mark, manifest, and icons. Static reference resolution found no missing asset.
 
 ```text
-320x568
-375x667
-390x844
-768x1024
-1024x768
-1440x900
-1920x1080
+og-image.png=1200x630
+apple-touch-icon.png=180x180
+REMOTE_STYLES=0
+REMOTE_FONTS=0
+SOURCE_SCRIPTS=0
+INLINE_EVENT_HANDLERS=0
+INLINE_STYLES=0
 ```
 
-That pass found no horizontal overflow, no clipped H1, all nine content sections present, zero script elements, and navigation targets between 44 and 46 CSS pixels high. It did identify undersized auxiliary labels on narrow screens. Those labels and mobile navigation text were raised to at least `0.7rem`, and the stylesheet URL was versioned to prevent a stale local cache.
+The revised OpenGraph card was visually inspected after final resizing. Its text is legible and matches the canonical publication.
 
-A second seven-viewport pass executed after the type-size correction, but its verbose result exceeded the tool-output capture limit. A compact third capture was blocked by the browser URL security policy for the loopback URL. The final compact render and console evidence will therefore be collected against the public Pages URL; until then `LOCAL_RENDER` remains a HOLD rather than a fabricated PASS.
+## CSS-disabled, reduced-motion, and JavaScript-disabled behavior
 
-## Accessibility-oriented review
+All content is ordered semantic HTML rather than injected application state, so it remains readable without CSS. The site contains no JavaScript and all navigation remains native. The stylesheet contains `@media (prefers-reduced-motion: reduce)` and the layout has no autoplay, flashing content, animation dependency, or hover-only action.
 
-Source-level checks passed for:
+## Deferred production checks
 
-- document language and unique title;
-- semantic `header`, `nav`, `main`, `section`, `article`, and `footer` structure;
-- logical heading hierarchy;
-- skip link as the first focusable control;
-- visible `:focus-visible` styling;
-- native links and native `details`/`summary` disclosure controls only;
-- decorative SVG alternative-text handling;
-- reduced-motion media query;
-- no autoplay, flashing content, scripted focus management, or keyboard-trap mechanism;
-- no dependency on hover or JavaScript.
-
-The final interactive focus sequence and console log count remain scheduled for the public Pages URL because the loopback browser recheck was blocked.
-
-## CSS-disabled and JavaScript-disabled behavior
-
-The page content is present as ordered semantic HTML rather than injected or hidden application state. There are zero script elements, zero inline event handlers, and five native FAQ disclosure elements. The source therefore remains readable without CSS and remains functional without JavaScript. This is a structural verification; the final public browser check remains part of deployment QA.
-
-## Performance tooling
-
-Lighthouse scores were not measured because the environment did not provide a retained Lighthouse result and no production dependency was added solely for one-time testing. All four scores remain `NOT_MEASURED`.
+The custom Cloudflare 404 response, live headers, live content markers, mixed-content state, canonical redirects, and public console log are verified again after the release commit reaches Cloudflare Pages. They are not inferred from this local report.

@@ -1,6 +1,9 @@
 name: Production verification
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -21,7 +24,18 @@ jobs:
 
       - name: Verify production URLs, redirects, and headers
         shell: pwsh
-        run: >-
-          ./scripts/verify_deployment.ps1
-          -BaseUrl "https://militaristhumanism.com"
-          -PagesDevUrl "https://militaristhumanism.pages.dev"
+        run: |
+          $maxAttempts = 8
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Output "PRODUCTION_VERIFY_ATTEMPT=$attempt"
+            & pwsh -NoLogo -NoProfile -File ./scripts/verify_deployment.ps1 `
+              -BaseUrl "https://militaristhumanism.com" `
+              -PagesDevUrl "https://militaristhumanism.pages.dev"
+            if ($LASTEXITCODE -eq 0) {
+              exit 0
+            }
+            if ($attempt -lt $maxAttempts) {
+              Start-Sleep -Seconds 15
+            }
+          }
+          exit 1

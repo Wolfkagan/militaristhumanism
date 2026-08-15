@@ -319,6 +319,15 @@ html[lang="de"] .section h2 {
   text-transform: uppercase;
 }
 
+.section h4 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
 .section p {
   color: var(--paper-dim);
 }
@@ -328,6 +337,470 @@ html[lang="de"] .section h2 {
   font-family: var(--serif);
   font-size: clamp(1.25rem, 2vw, 1.65rem);
   line-height: 1.5;
+}
+
+.eyebrow {
+  margin: 0 0 1.25rem;
+  color: var(--bronze) !important;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.doctrine-block {
+  margin-top: clamp(4rem, 8vw, 7.5rem);
+  padding-top: clamp(2rem, 4vw, 3.5rem);
+  border-top: 1px solid var(--line-strong);
+}
+
+.doctrine-block.first-block {
+  margin-top: clamp(3rem, 6vw, 5.5rem);
+}
+
+.doctrine-block > h3 {
+  max-width: 52rem;
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.doctrine-block > p:not(.eyebrow, .lead) {
+  max-width: 54rem;
+}
+
+.doctrine-block > blockquote,
+.section-content > blockquote {
+  margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+  padding: clamp(1.4rem, 3vw, 2.25rem);
+  border-left: 3px solid var(--bronze);
+  background: var(--ink-raised);
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+  line-height: 1.55;
+}
+
+.source-link {
+  color: var(--paper);
+  text-decoration-color: var(--bronze-dark);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.source-link:hover {
+  color: var(--bronze);
+}
+
+.formula {
+  margin-top: clamp(3rem, 6vw, 5rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid var(--bronze-dark);
+  background: var(--ink-raised);
+  overflow-wrap: anywhere;
+}
+
+.formula span {
+  color: var(--bronze);
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.formula strong {
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.1rem, 2.3vw, 1.65rem);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.major-formula strong {
+  font-size: clamp(1.8rem, 4vw, 3.4rem);
+  letter-spacing: -0.035em;
+}
+
+.comparison-formula {
+  grid-template-columns: minmax(4rem, 0.18fr) minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.judgment-formula strong {
+  font-size: clamp(1.15rem, 2.6vw, 2rem);
+}
+
+.compact-cards > div,
+.identity-grid > div {
+  padding: clamp(1.5rem, 3vw, 2.75rem);
+  background: var(--ink-raised);
+}
+
+.compact-cards h4,
+.identity-grid h3 {
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--bronze);
+}
+
+.plain-list,
+.declaration-list {
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plain-list li,
+.declaration-list li {
+  position: relative;
+  padding: 0.65rem 0 0.65rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--paper-dim);
+}
+
+.plain-list li::before,
+.declaration-list li::before {
+  content: "";
+  position: absolute;
+  top: 1.3rem;
+  left: 0;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: var(--bronze);
+}
+
+.declaration-list {
+  margin-top: clamp(2rem, 5vw, 4rem);
+  columns: 2;
+  column-gap: clamp(2rem, 5vw, 5rem);
+}
+
+.declaration-list li {
+  break-inside: avoid;
+}
+
+.key-lines {
+  margin-top: clamp(2rem, 5vw, 4rem);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line-strong);
+}
+
+.key-lines p {
+  margin: 0;
+  padding: 1.1rem 1rem 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--paper) !important;
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+}
+
+.key-lines p:nth-child(even) {
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--line);
+}
+
+.canon-lines {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.canon-lines p,
+.canon-lines p:nth-child(even) {
+  padding-inline: 1rem;
+  border-left: 1px solid var(--line);
+}
+
+.canon-lines p:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.ranked-list,
+.law-list,
+.risk-list,
+.decision-test {
+  margin: clamp(3rem, 6vw, 5rem) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+  list-style: none;
+}
+
+.ranked-list > li,
+.risk-list > li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1.25rem;
+  padding-block: 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ranked-list > li > span,
+.risk-list > li > span,
+.decision-test > li > span {
+  color: var(--bronze);
+  font-family: var(--serif);
+}
+
+.ranked-list h3,
+.risk-list h3 {
+  margin-bottom: 0.45rem;
+}
+
+.ranked-list p,
+.risk-list p {
+  margin: 0;
+}
+
+.law-list > li {
+  padding-block: clamp(1.6rem, 3vw, 2.4rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.law-list > li > p {
+  max-width: 54rem;
+  margin: 0.9rem 0 0 4.2rem;
+}
+
+.law-heading {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: baseline;
+}
+
+.law-heading span {
+  color: var(--bronze);
+  font-family: var(--serif);
+}
+
+.law-heading h4 {
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.condition-line {
+  margin: 1.25rem 0 0 4.2rem;
+  padding: 1rem;
+  border: 1px solid var(--bronze-dark);
+  color: var(--paper);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.table-wrap {
+  max-width: 100%;
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+  overflow-x: auto;
+  border: 1px solid var(--line-strong);
+}
+
+.table-wrap:focus-visible {
+  outline: 3px solid var(--bronze);
+  outline-offset: 3px;
+}
+
+.doctrine-table {
+  width: 100%;
+  min-width: 46rem;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.doctrine-table.two-column {
+  min-width: 34rem;
+}
+
+.doctrine-table th,
+.doctrine-table td {
+  padding: 1rem 1.1rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.doctrine-table th:last-child,
+.doctrine-table td:last-child {
+  border-right: 0;
+}
+
+.doctrine-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.doctrine-table th {
+  background: var(--ink-raised);
+  color: var(--bronze);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.doctrine-table td {
+  color: var(--paper-dim);
+}
+
+.doctrine-table td:first-child {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.sequence {
+  margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line-strong);
+  list-style: none;
+  counter-reset: sequence;
+}
+
+.sequence li {
+  min-width: 0;
+  padding: 1.15rem 1.5rem 1.15rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--paper);
+  counter-increment: sequence;
+}
+
+.sequence li::before {
+  content: counter(sequence, decimal-leading-zero) " → ";
+  color: var(--bronze);
+  font-family: var(--serif);
+}
+
+.source-principles,
+.slogan-list,
+.canon-boxes {
+  margin-top: clamp(3rem, 6vw, 5rem);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.source-principles article,
+.slogan-list article,
+.canon-boxes article {
+  padding: clamp(1.4rem, 3vw, 2.4rem);
+  background: var(--ink-raised);
+}
+
+.source-principles article > span {
+  display: block;
+  margin-bottom: 1.2rem;
+  color: var(--bronze);
+  font-family: var(--serif);
+}
+
+.source-principles p,
+.slogan-list p,
+.canon-boxes p {
+  margin-bottom: 0;
+}
+
+.identity-statement {
+  line-height: 1.8 !important;
+}
+
+.slogan-list h3 {
+  color: var(--bronze);
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.decision-test {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decision-test > li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.4rem 1.5rem 1.4rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.decision-test > li:nth-child(even) {
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--line);
+}
+
+.decision-test p {
+  margin: 0;
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+}
+
+.seal {
+  margin-top: clamp(3rem, 7vw, 6rem);
+  padding: clamp(2rem, 5vw, 4rem);
+  border: 1px solid var(--bronze-dark);
+  background: var(--ink-raised);
+}
+
+.seal h3 {
+  max-width: 38rem;
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 4vw, 3.3rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  text-transform: none;
+}
+
+.seal > p:last-child {
+  margin: 2rem 0 0;
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  line-height: 1.85;
+}
+
+.publication-meta {
+  margin: clamp(3rem, 6vw, 5rem) 0 0;
+  border-top: 1px solid var(--line-strong);
+}
+
+.publication-meta div {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 1rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.publication-meta dt {
+  color: var(--paper-dim);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.publication-meta dd {
+  margin: 0;
 }
 
 .lead-grid,
@@ -464,6 +937,49 @@ html[lang="de"] .section h2 {
 
 .dignity-grid > div p + p {
   margin-top: 1.5rem;
+}
+
+.dignity .doctrine-block {
+  border-color: rgba(18, 19, 18, 0.28);
+}
+
+.dignity .eyebrow {
+  color: var(--bronze-dark) !important;
+}
+
+.dignity .identity-grid,
+.dignity .source-principles {
+  border-color: rgba(18, 19, 18, 0.22);
+  background: rgba(18, 19, 18, 0.22);
+}
+
+.dignity .identity-grid > div,
+.dignity .source-principles article {
+  background: #e4dfd2;
+}
+
+.dignity .identity-grid h3 {
+  border-color: rgba(18, 19, 18, 0.2);
+  color: var(--bronze-dark);
+}
+
+.dignity .source-principles article > span {
+  color: var(--bronze-dark);
+}
+
+.dignity .declaration-list li {
+  border-color: rgba(18, 19, 18, 0.18);
+  color: #47473f;
+}
+
+.dignity .declaration-list li::before {
+  background: var(--bronze-dark);
+}
+
+.dignity .doctrine-block > blockquote {
+  border-color: var(--bronze-dark);
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .manifesto-intro {
@@ -779,6 +1295,24 @@ html[lang="de"] .section h2 {
   .status-grid {
     grid-template-columns: 1fr;
   }
+
+  .canon-lines {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .canon-lines p:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .canon-lines p:nth-child(even) {
+    padding-left: 1rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .sequence {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 46rem) {
@@ -808,7 +1342,39 @@ html[lang="de"] .section h2 {
   .lead-grid,
   .split-copy,
   .dignity-grid,
-  .boundary-grid {
+  .boundary-grid,
+  .source-principles,
+  .slogan-list,
+  .canon-boxes,
+  .decision-test {
+    grid-template-columns: 1fr;
+  }
+
+  .key-lines,
+  .canon-lines {
+    grid-template-columns: 1fr;
+  }
+
+  .key-lines p,
+  .key-lines p:nth-child(even),
+  .canon-lines p,
+  .canon-lines p:nth-child(even),
+  .canon-lines p:nth-child(odd) {
+    padding-inline: 0;
+    border-left: 0;
+  }
+
+  .declaration-list {
+    columns: 1;
+  }
+
+  .decision-test > li,
+  .decision-test > li:nth-child(even) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .comparison-formula {
     grid-template-columns: 1fr;
   }
 
@@ -896,6 +1462,27 @@ html[lang="de"] .section h2 {
   }
 
   .status-grid dl div {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .sequence {
+    grid-template-columns: 1fr;
+  }
+
+  .law-list > li > p,
+  .condition-line {
+    margin-left: 0;
+  }
+
+  .law-heading,
+  .ranked-list > li,
+  .risk-list > li {
+    grid-template-columns: 2.3rem minmax(0, 1fr);
+    gap: 0.8rem;
+  }
+
+  .publication-meta div {
     grid-template-columns: 1fr;
     gap: 0.35rem;
   }

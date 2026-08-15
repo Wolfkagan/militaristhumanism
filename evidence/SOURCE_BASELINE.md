@@ -8,7 +8,7 @@
 - Local branch at discovery: `main`
 - Pre-change commit: `EMPTY_LOCAL_REPOSITORY`
 - Local remote URL: not configured at discovery
-- Authenticated GitHub connector account: `Wolfkagan` (numeric account ID `209252404`)
+- Authenticated GitHub connector account: `Wolfkagan`
 - Repository full name: `Wolfkagan/militaristhumanism`
 - Repository visibility: public
 - Default branch configured by GitHub: `main`
