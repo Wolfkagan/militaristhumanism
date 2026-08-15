@@ -2,7 +2,7 @@
 
 Production source for [militaristhumanism.com](https://militaristhumanism.com/).
 
-Militarist Humanism is presented here as an ethical philosophy of disciplined capability placed under human dignity, law, accountability, and service. This repository contains the V0.1 English-language public statement and its release-verification tooling.
+Militarist Humanism is presented here as an ethical philosophy of disciplined capability placed under human dignity, law, accountability, and service. This repository contains the V0.1 public statement in English, Turkish, and German, together with its release-verification tooling.
 
 ## Architecture
 
@@ -13,6 +13,7 @@ The site is deliberately framework-free:
 - no JavaScript;
 - no remote fonts, analytics, trackers, or runtime dependencies;
 - static assets served from `public/`;
+- indexable language routes at `/`, `/tr/`, and `/de/` with reciprocal `hreflang` metadata;
 - Cloudflare Pages Git integration from `main`.
 
 Required Cloudflare Pages settings:

@@ -19,6 +19,8 @@ CANONICAL = "https://militaristhumanism.com/"
 
 REQUIRED_FILES = (
     "public/index.html",
+    "public/tr/index.html",
+    "public/de/index.html",
     "public/404.html",
     "public/styles.css",
     "public/favicon.svg",
@@ -39,6 +41,7 @@ REQUIRED_FILES = (
     "evidence/RELEASE_V0.1.md",
     "evidence/FILE_MANIFEST_SHA256.txt",
     ".github/workflows/site-ci.yml",
+    ".github/workflows/production-verify.yml",
     ".gitignore",
     "README.md",
 )
@@ -87,10 +90,13 @@ class DocumentParser(HTMLParser):
         self.inline_events: list[tuple[str, str]] = []
         self.inline_styles: list[str] = []
         self.script_count = 0
+        self.html_lang: str | None = None
         self._in_title = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         data = dict(attrs)
+        if tag == "html":
+            self.html_lang = data.get("lang")
         if "id" in data and data["id"]:
             self.ids.append(str(data["id"]))
         for name, value in attrs:
@@ -199,6 +205,7 @@ def main() -> int:
     parser = DocumentParser()
     parser.feed(index_text)
 
+    add(errors, parser.html_lang == "en", "Homepage language must be English")
     add(errors, bool(parser.title), "Missing or empty document title")
     add(errors, parser.title == "Militarist Humanism — Discipline, Strength, Humanity", "Unexpected homepage title")
     description = meta_value(parser, name="description")
@@ -208,6 +215,18 @@ def main() -> int:
 
     canonical_links = [item.get("href") for item in parser.links if item.get("rel", "").lower() == "canonical"]
     add(errors, canonical_links == [CANONICAL], "Canonical URL is missing or incorrect")
+    expected_alternates = {
+        "en": "https://militaristhumanism.com/",
+        "tr": "https://militaristhumanism.com/tr/",
+        "de": "https://militaristhumanism.com/de/",
+        "x-default": "https://militaristhumanism.com/",
+    }
+    homepage_alternates = {
+        item.get("hreflang"): item.get("href")
+        for item in parser.links
+        if item.get("rel", "").lower() == "alternate" and item.get("hreflang")
+    }
+    add(errors, homepage_alternates == expected_alternates, "Homepage hreflang alternates are missing or incorrect")
     add(errors, meta_value(parser, prop="og:url") == CANONICAL, "OpenGraph URL is missing or incorrect")
     add(errors, meta_value(parser, prop="og:type") == "website", "OpenGraph type must be website")
     add(errors, meta_value(parser, prop="og:image") == f"{CANONICAL}assets/og-image.png", "OpenGraph image is missing or incorrect")
@@ -250,6 +269,61 @@ def main() -> int:
     for section_id in REQUIRED_SECTIONS:
         add(errors, f'href="#{section_id}"' in index_text or section_id in {"responsibility", "dignity", "status"}, f"Primary navigation or content does not link to section: {section_id}")
 
+    localized_pages = {
+        "tr": {
+            "path": PUBLIC / "tr" / "index.html",
+            "canonical": "https://militaristhumanism.com/tr/",
+            "title": "Militarist Hümanizm — Disiplin, Güç, İnsanlık",
+            "locale": "tr_TR",
+        },
+        "de": {
+            "path": PUBLIC / "de" / "index.html",
+            "canonical": "https://militaristhumanism.com/de/",
+            "title": "Militaristischer Humanismus — Disziplin, Stärke, Menschlichkeit",
+            "locale": "de_DE",
+        },
+    }
+    for language, config in localized_pages.items():
+        page_text = config["path"].read_text(encoding="utf-8")
+        page_parser = DocumentParser()
+        page_parser.feed(page_text)
+        page_name = config["path"].relative_to(ROOT).as_posix()
+        add(errors, page_parser.html_lang == language, f"Incorrect document language in {page_name}")
+        add(errors, page_parser.title == config["title"], f"Unexpected title in {page_name}")
+        page_description = meta_value(page_parser, name="description")
+        add(errors, bool(page_description and 70 <= len(page_description) <= 180), f"Missing or unsuitable meta description in {page_name}")
+        page_canonicals = [item.get("href") for item in page_parser.links if item.get("rel", "").lower() == "canonical"]
+        add(errors, page_canonicals == [config["canonical"]], f"Incorrect canonical URL in {page_name}")
+        page_alternates = {
+            item.get("hreflang"): item.get("href")
+            for item in page_parser.links
+            if item.get("rel", "").lower() == "alternate" and item.get("hreflang")
+        }
+        add(errors, page_alternates == expected_alternates, f"Incorrect hreflang alternates in {page_name}")
+        add(errors, meta_value(page_parser, prop="og:url") == config["canonical"], f"Incorrect OpenGraph URL in {page_name}")
+        add(errors, meta_value(page_parser, prop="og:locale") == config["locale"], f"Incorrect OpenGraph locale in {page_name}")
+        add(errors, meta_value(page_parser, prop="og:image") == f"{CANONICAL}assets/og-image.png", f"Incorrect OpenGraph image in {page_name}")
+        add(errors, page_parser.script_count == 0, f"JavaScript is not permitted in {page_name}")
+        add(errors, not page_parser.inline_events, f"Inline event handlers found in {page_name}")
+        add(errors, not page_parser.inline_styles, f"Inline styles found in {page_name}")
+        duplicate_page_ids = sorted({identifier for identifier in page_parser.ids if page_parser.ids.count(identifier) > 1})
+        add(errors, not duplicate_page_ids, f"Duplicate HTML IDs in {page_name}: {', '.join(duplicate_page_ids)}")
+        for section_id in REQUIRED_SECTIONS:
+            add(errors, section_id in page_parser.ids, f"Missing section {section_id} in {page_name}")
+            match = re.search(rf'<section\b[^>]*\bid=["\']{re.escape(section_id)}["\'][^>]*>(.*?)</section>', page_text, flags=re.IGNORECASE | re.DOTALL)
+            visible_text = re.sub(r"<[^>]+>", " ", match.group(1)) if match else ""
+            add(errors, len(re.sub(r"\s+", " ", visible_text).strip()) >= 80, f"Section {section_id} is empty or too short in {page_name}")
+        known_page_ids = set(page_parser.ids)
+        for tag, attribute, reference in page_parser.refs:
+            if reference.startswith("http://"):
+                errors.append(f"Insecure HTTP reference in {page_name} {tag}[{attribute}]: {reference}")
+            if reference.startswith("#"):
+                add(errors, reference[1:] in known_page_ids, f"Broken fragment in {page_name}: {reference}")
+                continue
+            local = resolve_local_reference(reference)
+            if local is not None:
+                add(errors, local.is_file(), f"Broken local reference in {page_name}: {reference}")
+
     manifest_path = PUBLIC / "site.webmanifest"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -277,8 +351,16 @@ def main() -> int:
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         locations = [node.text for node in sitemap_root.findall("sm:url/sm:loc", namespace)]
         lastmods = [node.text for node in sitemap_root.findall("sm:url/sm:lastmod", namespace)]
-        add(errors, locations == [CANONICAL], "sitemap.xml must contain only the canonical homepage in V0.1")
+        expected_locations = [CANONICAL, f"{CANONICAL}tr/", f"{CANONICAL}de/"]
+        add(errors, locations == expected_locations, "sitemap.xml must contain the English, Turkish, and German canonical pages")
         add(errors, all(value and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) for value in lastmods), "sitemap.xml lastmod must use ISO YYYY-MM-DD")
+        alternate_namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9", "xhtml": "http://www.w3.org/1999/xhtml"}
+        for url_node in sitemap_root.findall("sm:url", alternate_namespace):
+            sitemap_alternates = {
+                node.attrib.get("hreflang"): node.attrib.get("href")
+                for node in url_node.findall("xhtml:link", alternate_namespace)
+            }
+            add(errors, sitemap_alternates == expected_alternates, "sitemap.xml hreflang alternates are incomplete")
     except (ET.ParseError, OSError) as exc:
         errors.append(f"Invalid sitemap.xml: {exc}")
 

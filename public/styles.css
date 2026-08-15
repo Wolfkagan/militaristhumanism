@@ -116,8 +116,16 @@ summary:focus-visible,
   flex: 0 0 auto;
 }
 
-.masthead nav {
+.masthead-actions {
   justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.55rem 1.5rem;
+}
+
+.masthead nav {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -139,6 +147,22 @@ summary:focus-visible,
 .masthead nav a:hover,
 .text-link:hover {
   color: var(--bronze);
+}
+
+.masthead .language-nav {
+  gap: 0.25rem;
+}
+
+.language-nav a {
+  min-width: 2.75rem;
+  justify-content: center;
+  padding-inline: 0.55rem;
+  border: 1px solid var(--line);
+}
+
+.language-nav a[aria-current="page"] {
+  border-color: var(--bronze);
+  color: var(--paper);
 }
 
 .hero {
@@ -208,6 +232,16 @@ summary:focus-visible,
   font-family: var(--serif);
   font-size: clamp(1rem, 1.6vw, 1.3rem);
   line-height: 1.5;
+}
+
+html[lang="de"] .hero h1 {
+  font-size: clamp(2.2rem, 6vw, 5.2rem);
+  letter-spacing: -0.07em;
+}
+
+html[lang="de"] .section h2 {
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .hero-aside {
@@ -674,6 +708,24 @@ summary:focus-visible,
   color: var(--ink);
 }
 
+.error-languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.error-languages a {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--paper-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 62rem) {
   .masthead {
     padding-block: 1rem;
@@ -681,8 +733,12 @@ summary:focus-visible,
     gap: 0.6rem;
   }
 
-  .masthead nav {
+  .masthead-actions {
     justify-self: start;
+    justify-content: flex-start;
+  }
+
+  .masthead nav {
     justify-content: flex-start;
   }
 
@@ -812,6 +868,10 @@ summary:focus-visible,
   .error-main h1 {
     font-size: clamp(2.65rem, 13vw, 4rem);
     line-height: 0.83;
+  }
+
+  html[lang="de"] .hero h1 {
+    font-size: clamp(1.75rem, 8.4vw, 2.9rem);
   }
 
   .hero-index {

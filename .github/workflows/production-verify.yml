@@ -1,0 +1,27 @@
+name: Production verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify live Cloudflare deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Verify production URLs, redirects, and headers
+        shell: pwsh
+        run: >-
+          ./scripts/verify_deployment.ps1
+          -BaseUrl "https://militaristhumanism.com"
+          -PagesDevUrl "https://militaristhumanism.pages.dev"

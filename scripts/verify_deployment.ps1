@@ -94,6 +94,8 @@ try {
         "SITEMAP_STATUS" = "$BaseUrl/sitemap.xml"
         "FAVICON_STATUS" = "$BaseUrl/favicon.svg"
         "MANIFEST_STATUS" = "$BaseUrl/site.webmanifest"
+        "TURKISH_STATUS" = "$BaseUrl/tr/"
+        "GERMAN_STATUS" = "$BaseUrl/de/"
     }
     foreach ($name in $resourceChecks.Keys) {
         $response = Get-Response -Uri $resourceChecks[$name] -Method GET
@@ -104,6 +106,18 @@ try {
     $notFound = Get-Response -Uri "$BaseUrl/nonexistent-path-v01-verification" -Method GET
     Assert-Equal "NOT_FOUND_STATUS" ([int]$notFound.StatusCode) 404
     $notFound.Dispose()
+
+    $turkish = Get-Response -Uri "$BaseUrl/tr/" -Method GET
+    $turkishHtml = Read-Body -Response $turkish
+    Assert-Contains "TURKISH_TITLE_HTML" $turkishHtml "Militarist Hümanizm — Disiplin, Güç, İnsanlık"
+    Assert-Contains "TURKISH_CANONICAL_HTML" $turkishHtml "<link rel=`"canonical`" href=`"https://militaristhumanism.com/tr/`">"
+    $turkish.Dispose()
+
+    $german = Get-Response -Uri "$BaseUrl/de/" -Method GET
+    $germanHtml = Read-Body -Response $german
+    Assert-Contains "GERMAN_TITLE_HTML" $germanHtml "Militaristischer Humanismus — Disziplin, Stärke, Menschlichkeit"
+    Assert-Contains "GERMAN_CANONICAL_HTML" $germanHtml "<link rel=`"canonical`" href=`"https://militaristhumanism.com/de/`">"
+    $german.Dispose()
 
     $httpApex = Get-Response -Uri "http://militaristhumanism.com/" -Method HEAD
     Assert-Equal "HTTP_APEX_STATUS" ([int]$httpApex.StatusCode) 301
@@ -126,6 +140,11 @@ try {
         Assert-Equal "PAGES_DEV_STATUS" ([int]$pages.StatusCode) 301
         Assert-Equal "PAGES_DEV_LOCATION" $pages.Headers["Location"] $canonical
         $pages.Dispose()
+
+        $pagesPath = Get-Response -Uri "$pagesBase/test?source=verify" -Method HEAD
+        Assert-Equal "PAGES_DEV_PATH_STATUS" ([int]$pagesPath.StatusCode) 301
+        Assert-Equal "PAGES_DEV_PATH_QUERY_LOCATION" $pagesPath.Headers["Location"] "https://militaristhumanism.com/test?source=verify"
+        $pagesPath.Dispose()
     }
     else {
         $script:Failures.Add("PagesDevUrl is required for the production release verification")
