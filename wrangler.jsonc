@@ -1,0 +1,115 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "militaristhumanism",
+  "main": "./src/worker.ts",
+  "assets": {
+    "directory": "./public"
+  },
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_ENV": "preview",
+    "CANONICAL_ORIGIN": "https://militaristhumanism.com",
+    "AUTH_ALLOWED_HOSTS": "community-preview.militaristhumanism.com",
+    "AUTH_BASE_FALLBACK": "https://community-preview.militaristhumanism.com",
+    "COMMUNITY_READ_ONLY": "false",
+    "TURNSTILE_MODE": "required",
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "ANALYTICS_DATASET": "militaristhumanism_community_preview"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "militaristhumanism-community-preview",
+      "database_id": "cf0cac26-d334-416f-a652-edf5f3093835",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS",
+      "dataset": "militaristhumanism_community_preview"
+    }
+  ],
+  "ratelimits": [
+    { "name": "AUTH_RATE_LIMITER", "namespace_id": "2101", "simple": { "limit": 20, "period": 60 } },
+    { "name": "WRITE_RATE_LIMITER", "namespace_id": "2102", "simple": { "limit": 12, "period": 60 } },
+    { "name": "SEARCH_RATE_LIMITER", "namespace_id": "2103", "simple": { "limit": 60, "period": 60 } },
+    { "name": "REACTION_RATE_LIMITER", "namespace_id": "2104", "simple": { "limit": 120, "period": 60 } },
+    { "name": "REPORT_RATE_LIMITER", "namespace_id": "2105", "simple": { "limit": 6, "period": 60 } }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+  },
+  "env": {
+    "preview": {
+      "name": "militaristhumanism-preview",
+      "vars": {
+        "APP_ENV": "preview",
+        "CANONICAL_ORIGIN": "https://militaristhumanism.com",
+        "AUTH_ALLOWED_HOSTS": "community-preview.militaristhumanism.com",
+        "AUTH_BASE_FALLBACK": "https://community-preview.militaristhumanism.com",
+        "COMMUNITY_READ_ONLY": "false",
+        "TURNSTILE_MODE": "required",
+        "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+        "ANALYTICS_DATASET": "militaristhumanism_community_preview"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "militaristhumanism-community-preview",
+          "database_id": "cf0cac26-d334-416f-a652-edf5f3093835",
+          "migrations_dir": "./migrations"
+        }
+      ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "ANALYTICS",
+          "dataset": "militaristhumanism_community_preview"
+        }
+      ],
+      "ratelimits": [
+        { "name": "AUTH_RATE_LIMITER", "namespace_id": "2101", "simple": { "limit": 20, "period": 60 } },
+        { "name": "WRITE_RATE_LIMITER", "namespace_id": "2102", "simple": { "limit": 12, "period": 60 } },
+        { "name": "SEARCH_RATE_LIMITER", "namespace_id": "2103", "simple": { "limit": 60, "period": 60 } },
+        { "name": "REACTION_RATE_LIMITER", "namespace_id": "2104", "simple": { "limit": 120, "period": 60 } },
+        { "name": "REPORT_RATE_LIMITER", "namespace_id": "2105", "simple": { "limit": 6, "period": 60 } }
+      ]
+    },
+    "production": {
+      "name": "militaristhumanism",
+      "vars": {
+        "APP_ENV": "production",
+        "CANONICAL_ORIGIN": "https://militaristhumanism.com",
+        "AUTH_ALLOWED_HOSTS": "militaristhumanism.com",
+        "AUTH_BASE_FALLBACK": "https://militaristhumanism.com",
+        "COMMUNITY_READ_ONLY": "false",
+        "TURNSTILE_MODE": "required",
+        "ANALYTICS_DATASET": "militaristhumanism_community_prod"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "militaristhumanism-community-prod",
+          "database_id": "8d7250f3-184d-44ea-aaa0-eab13f4a003e",
+          "migrations_dir": "./migrations"
+        }
+      ],
+      "analytics_engine_datasets": [
+        {
+          "binding": "ANALYTICS",
+          "dataset": "militaristhumanism_community_prod"
+        }
+      ],
+      "ratelimits": [
+        { "name": "AUTH_RATE_LIMITER", "namespace_id": "3101", "simple": { "limit": 20, "period": 60 } },
+        { "name": "WRITE_RATE_LIMITER", "namespace_id": "3102", "simple": { "limit": 12, "period": 60 } },
+        { "name": "SEARCH_RATE_LIMITER", "namespace_id": "3103", "simple": { "limit": 60, "period": 60 } },
+        { "name": "REACTION_RATE_LIMITER", "namespace_id": "3104", "simple": { "limit": 120, "period": 60 } },
+        { "name": "REPORT_RATE_LIMITER", "namespace_id": "3105", "simple": { "limit": 6, "period": 60 } }
+      ]
+    }
+  }
+}

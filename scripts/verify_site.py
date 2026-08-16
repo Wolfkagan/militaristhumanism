@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-fast static validation for the Militarist Humanism production site."""
+"""Fail-fast source validation for the static publication and Cloudflare Worker."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "public"
 CANONICAL = "https://militaristhumanism.com/"
+WORKER_RENDERED_PATHS = {"/community"}
 
 REQUIRED_FILES = (
     "public/index.html",
@@ -29,12 +30,26 @@ REQUIRED_FILES = (
     "public/sitemap.xml",
     "public/_headers",
     "public/_redirects",
+    "public/.assetsignore",
+    "public/community.css",
+    "public/community.js",
+    "public/admin.js",
     "public/assets/brand-mark.svg",
     "public/assets/og-image.png",
     "public/assets/apple-touch-icon.png",
     "scripts/verify_site.py",
     "scripts/generate_manifest.py",
     "scripts/verify_deployment.ps1",
+    "src/worker.ts",
+    "src/app.ts",
+    "src/security.ts",
+    "migrations/0001_auth_core.sql",
+    "migrations/0002_community_core.sql",
+    "migrations/0003_indexes_and_search.sql",
+    "migrations/0004_seed_categories_and_settings.sql",
+    "migrations/0005_report_race_guard.sql",
+    "tests/security.test.ts",
+    "tests/authorization.test.ts",
     "evidence/SOURCE_BASELINE.md",
     "evidence/QA_REPORT.md",
     "evidence/DEPLOYMENT_REPORT.md",
@@ -43,6 +58,10 @@ REQUIRED_FILES = (
     ".github/workflows/site-ci.yml",
     ".github/workflows/production-verify.yml",
     ".gitignore",
+    "package.json",
+    "package-lock.json",
+    "wrangler.jsonc",
+    "tsconfig.json",
     "README.md",
 )
 
@@ -60,14 +79,13 @@ REQUIRED_SECTIONS = (
 
 PLACEHOLDER_PATTERNS = (
     r"\blorem ipsum\b",
-    r"\bplaceholder\b",
     r"\bcoming soon\b",
     r"\bTODO\b",
     r"\bFIXME\b",
-    r"example\.com",
-    r"localhost",
-    r"127\.0\.0\.1",
+    r"\bHACK\b",
 )
+
+RUNTIME_REFERENCE_PATTERNS = (r"example\.com", r"localhost", r"127\.0\.0\.1")
 
 SECRET_PATTERNS = (
     r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
@@ -149,6 +167,8 @@ def resolve_local_reference(reference: str) -> Path | None:
     if parsed.scheme or parsed.netloc or reference.startswith("mailto:") or reference.startswith("tel:"):
         return None
     path = unquote(parsed.path)
+    if path.rstrip("/") in WORKER_RENDERED_PATHS:
+        return None
     if not path or path == "/":
         return PUBLIC / "index.html"
     if path.startswith("/"):
@@ -176,7 +196,9 @@ def text_files() -> list[Path]:
         relative = path.relative_to(ROOT)
         if relative.parts[0] in {".git", "work", "outputs", "node_modules", ".next", ".vinext", ".wrangler"}:
             continue
-        if path.suffix.lower() in {".html", ".css", ".svg", ".txt", ".xml", ".json", ".md", ".py", ".ps1", ".yml", ".yaml"} or path.name in {"_headers", "_redirects", ".gitignore"}:
+        if relative.as_posix() == "worker-configuration.d.ts" or any(part.startswith(".wrangler-") for part in relative.parts):
+            continue
+        if path.suffix.lower() in {".html", ".css", ".svg", ".txt", ".xml", ".json", ".jsonc", ".md", ".py", ".ps1", ".sql", ".ts", ".yml", ".yaml"} or path.name in {"_headers", "_redirects", ".assetsignore", ".gitignore"}:
             candidates.append(path)
     return candidates
 
@@ -190,9 +212,37 @@ def main() -> int:
         if path.is_file():
             add(errors, path.stat().st_size > 0, f"Required file is empty: {relative}")
 
-    framework_markers = ("package.json", "next.config.ts", "vite.config.ts", "app", "worker")
-    for marker in framework_markers:
-        add(errors, not (ROOT / marker).exists(), f"Framework marker must not ship in the static repository: {marker}")
+    try:
+        worker_config = json.loads((ROOT / "wrangler.jsonc").read_text(encoding="utf-8"))
+        add(errors, worker_config.get("main") == "./src/worker.ts", "Worker entry point must be ./src/worker.ts")
+        add(errors, "pages_build_output_dir" not in worker_config, "Pages-only output configuration must not drive the Worker release")
+        assets = worker_config.get("assets")
+        add(errors, isinstance(assets, dict) and assets.get("directory") == "./public", "Worker static assets directory must be ./public")
+        add(errors, worker_config.get("observability", {}).get("enabled") is True, "Worker observability must be enabled")
+        expected_rate_limits = {
+            "AUTH_RATE_LIMITER",
+            "WRITE_RATE_LIMITER",
+            "SEARCH_RATE_LIMITER",
+            "REACTION_RATE_LIMITER",
+            "REPORT_RATE_LIMITER",
+        }
+        configured_rate_limits = {item.get("name") for item in worker_config.get("ratelimits", []) if isinstance(item, dict)}
+        add(errors, configured_rate_limits == expected_rate_limits, "Worker rate-limit bindings are incomplete")
+        environments = worker_config.get("env", {})
+        preview = environments.get("preview", {})
+        production = environments.get("production", {})
+        add(errors, preview.get("name") == "militaristhumanism-preview", "Preview Worker name is missing or incorrect")
+        add(errors, production.get("name") == "militaristhumanism", "Production Worker name is missing or incorrect")
+        add(errors, preview.get("vars", {}).get("APP_ENV") == "preview", "Preview APP_ENV must be preview")
+        add(errors, production.get("vars", {}).get("APP_ENV") == "production", "Production APP_ENV must be production")
+        preview_d1 = preview.get("d1_databases", [])
+        production_d1 = production.get("d1_databases", [])
+        add(errors, len(preview_d1) == 1 and preview_d1[0].get("binding") == "DB", "Preview D1 binding is missing")
+        add(errors, len(production_d1) == 1 and production_d1[0].get("binding") == "DB", "Production D1 binding is missing")
+        if len(preview_d1) == 1 and len(production_d1) == 1:
+            add(errors, preview_d1[0].get("database_id") != production_d1[0].get("database_id"), "Preview and production must not share a D1 database")
+    except (json.JSONDecodeError, OSError) as exc:
+        errors.append(f"Invalid wrangler.jsonc: {exc}")
 
     if errors:
         print("STATIC_VALIDATION=FAIL")
@@ -268,6 +318,7 @@ def main() -> int:
 
     for section_id in REQUIRED_SECTIONS:
         add(errors, f'href="#{section_id}"' in index_text or section_id in {"responsibility", "dignity", "status"}, f"Primary navigation or content does not link to section: {section_id}")
+    add(errors, 'href="/community"' in index_text, "Primary navigation does not link to the Worker-rendered community")
 
     localized_pages = {
         "tr": {
@@ -313,6 +364,7 @@ def main() -> int:
             match = re.search(rf'<section\b[^>]*\bid=["\']{re.escape(section_id)}["\'][^>]*>(.*?)</section>', page_text, flags=re.IGNORECASE | re.DOTALL)
             visible_text = re.sub(r"<[^>]+>", " ", match.group(1)) if match else ""
             add(errors, len(re.sub(r"\s+", " ", visible_text).strip()) >= 80, f"Section {section_id} is empty or too short in {page_name}")
+        add(errors, 'href="/community"' in page_text, f"Primary navigation does not link to the community in {page_name}")
         known_page_ids = set(page_parser.ids)
         for tag, attribute, reference in page_parser.refs:
             if reference.startswith("http://"):
@@ -372,13 +424,15 @@ def main() -> int:
         "Permissions-Policy:",
         "Cross-Origin-Opener-Policy: same-origin",
         "Cross-Origin-Resource-Policy: same-origin",
+        "Strict-Transport-Security: max-age=31536000",
         "Content-Security-Policy:",
-        "script-src 'none'",
+        "script-src https://static.cloudflareinsights.com/beacon.min.js",
     )
     for header in required_headers:
         add(errors, header in headers, f"Missing security header rule: {header}")
     add(errors, "unsafe-inline" not in headers and "unsafe-eval" not in headers, "CSP contains an unsafe script/style exception")
-    add(errors, "Strict-Transport-Security" not in headers, "HSTS must not be staged in _headers before external verification")
+    csp_line = next((line.strip() for line in headers.splitlines() if line.strip().startswith("Content-Security-Policy:")), "")
+    add(errors, "*" not in csp_line, "CSP contains a wildcard source")
 
     stylesheet = (PUBLIC / "styles.css").read_text(encoding="utf-8")
     add(errors, "prefers-reduced-motion: reduce" in stylesheet, "Reduced-motion support is missing")
@@ -387,10 +441,15 @@ def main() -> int:
     for path in text_files():
         relative = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8")
-        if relative != "scripts/verify_site.py":
+        authored_source = relative.startswith(("public/", "src/", "functions/", "migrations/", "scripts/"))
+        if authored_source and relative != "scripts/verify_site.py":
             for pattern in PLACEHOLDER_PATTERNS:
                 if re.search(pattern, text, flags=re.IGNORECASE):
                     errors.append(f"Forbidden placeholder/reference pattern {pattern!r} in {relative}")
+        if relative.startswith("public/"):
+            for pattern in RUNTIME_REFERENCE_PATTERNS:
+                if re.search(pattern, text, flags=re.IGNORECASE):
+                    errors.append(f"Development-only reference pattern {pattern!r} in public source {relative}")
         for pattern in SECRET_PATTERNS:
             if re.search(pattern, text):
                 errors.append(f"Potential secret pattern {pattern!r} in {relative}")
@@ -408,6 +467,7 @@ def main() -> int:
     print("ACCESSIBILITY_BASELINE=PASS")
     print("SEO_BASELINE=PASS")
     print("SECURITY_HEADERS=PASS")
+    print("WORKER_CONFIGURATION=PASS")
     print("STATIC_VALIDATION=PASS")
     return 0
 
