@@ -35,3 +35,7 @@ The first branch build exposed two independent legacy-pipeline conflicts rather 
 - Cloudflare Pages rejected Workers-only observability configuration, while the separate Workers build rejected the Pages-only configuration because it had no Worker entry point or assets directory.
 
 The remediation makes `src/worker.ts` and `public/` the single deployable unit and upgrades GitHub validation to run the publication checks, TypeScript checks, Workers-runtime suite, preview dry-run, production dry-run, and whole-release SHA-256 manifest verification.
+
+## Cloudflare control-plane changes
+
+On 2026-08-16, Analytics Engine was enabled at account scope after the first Worker upload was correctly rejected with API code `10089`. The legacy Pages project's Git connection was then disconnected so future branch pushes have exactly one deploy authority. Its last verified production deployment and custom domain were preserved; no production traffic was moved by this action.

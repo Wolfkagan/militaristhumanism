@@ -25,6 +25,26 @@ EXCLUDED_PARTS = {
 }
 EXCLUDED_SUFFIXES = {".bak", ".pyc", ".tmp"}
 EXCLUDED_NAMES = {".dev.vars", ".DS_Store", "Thumbs.db"}
+TEXT_FILE_NAMES = {".assetsignore", ".dev.vars.example", ".gitignore", "_headers", "_redirects", "_routes.json"}
+TEXT_FILE_SUFFIXES = {
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsonc",
+    ".lock",
+    ".md",
+    ".mjs",
+    ".ps1",
+    ".py",
+    ".sql",
+    ".svg",
+    ".ts",
+    ".txt",
+    ".xml",
+    ".yaml",
+    ".yml",
+}
 
 
 def included_files() -> list[Path]:
@@ -41,13 +61,25 @@ def included_files() -> list[Path]:
     return sorted(files, key=lambda value: value.relative_to(ROOT).as_posix())
 
 
+def canonical_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    if path.name not in TEXT_FILE_NAMES and path.suffix.lower() not in TEXT_FILE_SUFFIXES:
+        return data
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def render() -> str:
     lines = [
         "# MILITARIST HUMANISM V0.1 — SHA-256 FILE MANIFEST",
+        "# UTF-8 text is hashed with canonical LF line endings; binary files are hashed byte-for-byte.",
         "# Format: SHA256  relative/path",
     ]
     for path in included_files():
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        digest = hashlib.sha256(canonical_bytes(path)).hexdigest()
         lines.append(f"{digest}  {path.relative_to(ROOT).as_posix()}")
     return "\n".join(lines) + "\n"
 
