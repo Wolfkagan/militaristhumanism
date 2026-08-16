@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://militaristhumanism.com/sitemap.xml
+Sitemap: https://militaristhumanism.com/community-sitemap.xml

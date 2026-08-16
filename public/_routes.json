@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "include": [
+    "/community",
+    "/community/*",
+    "/api/*",
+    "/admin",
+    "/admin/*",
+    "/me/*",
+    "/notifications",
+    "/u/*",
+    "/community-sitemap.xml"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/styles.css",
+    "/community.css",
+    "/community.js",
+    "/admin.js",
+    "/favicon.svg",
+    "/site.webmanifest",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
+}

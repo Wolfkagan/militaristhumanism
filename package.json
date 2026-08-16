@@ -1,0 +1,42 @@
+{
+  "name": "militaristhumanism-community",
+  "version": "0.1.0-community.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev public --port 8788",
+    "dev:e2e": "wrangler pages dev public --port 8789 --binding APP_ENV=test --binding TURNSTILE_MODE=disabled",
+    "build:functions": "wrangler pages functions build --outdir .wrangler-functions-check",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:preview": "wrangler d1 migrations apply DB --env preview --remote",
+    "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote"
+  },
+  "dependencies": {
+    "better-auth": "^1.6.29",
+    "hono": "^4.13.2",
+    "markdown-it": "^15.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/vitest-pool-workers": "^0.21.3",
+    "@cloudflare/workers-types": "^5.20260816.1",
+    "@playwright/test": "^1.62.1",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^26.2.0",
+    "eslint": "^10.8.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260811.1": true
+  }
+}
