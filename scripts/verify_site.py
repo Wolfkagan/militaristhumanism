@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "public"
 CANONICAL = "https://militaristhumanism.com/"
+WORKER_RENDERED_PATHS = {"/community"}
 
 REQUIRED_FILES = (
     "public/index.html",
@@ -166,6 +167,8 @@ def resolve_local_reference(reference: str) -> Path | None:
     if parsed.scheme or parsed.netloc or reference.startswith("mailto:") or reference.startswith("tel:"):
         return None
     path = unquote(parsed.path)
+    if path.rstrip("/") in WORKER_RENDERED_PATHS:
+        return None
     if not path or path == "/":
         return PUBLIC / "index.html"
     if path.startswith("/"):
@@ -315,6 +318,7 @@ def main() -> int:
 
     for section_id in REQUIRED_SECTIONS:
         add(errors, f'href="#{section_id}"' in index_text or section_id in {"responsibility", "dignity", "status"}, f"Primary navigation or content does not link to section: {section_id}")
+    add(errors, 'href="/community"' in index_text, "Primary navigation does not link to the Worker-rendered community")
 
     localized_pages = {
         "tr": {
@@ -360,6 +364,7 @@ def main() -> int:
             match = re.search(rf'<section\b[^>]*\bid=["\']{re.escape(section_id)}["\'][^>]*>(.*?)</section>', page_text, flags=re.IGNORECASE | re.DOTALL)
             visible_text = re.sub(r"<[^>]+>", " ", match.group(1)) if match else ""
             add(errors, len(re.sub(r"\s+", " ", visible_text).strip()) >= 80, f"Section {section_id} is empty or too short in {page_name}")
+        add(errors, 'href="/community"' in page_text, f"Primary navigation does not link to the community in {page_name}")
         known_page_ids = set(page_parser.ids)
         for tag, attribute, reference in page_parser.refs:
             if reference.startswith("http://"):
