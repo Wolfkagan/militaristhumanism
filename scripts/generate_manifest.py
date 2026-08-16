@@ -14,6 +14,7 @@ OUTPUT = ROOT / "evidence" / "FILE_MANIFEST_SHA256.txt"
 EXCLUDED_PARTS = {
     ".git",
     ".pytest_cache",
+    ".tmp",
     ".wrangler",
     "__pycache__",
     "coverage",
@@ -21,6 +22,7 @@ EXCLUDED_PARTS = {
     "outputs",
     "playwright-report",
     "test-results",
+    "tmp",
     "work",
 }
 EXCLUDED_SUFFIXES = {".bak", ".pyc", ".tmp"}
@@ -41,6 +43,7 @@ TEXT_FILE_SUFFIXES = {
     ".svg",
     ".ts",
     ".txt",
+    ".webmanifest",
     ".xml",
     ".yaml",
     ".yml",
