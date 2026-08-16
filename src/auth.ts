@@ -22,6 +22,25 @@ export function authIsConfigured(env: Env): boolean {
   return configured(env.AUTH_SECRET) && env.AUTH_SECRET.length >= 32 && configuredProviders(env).length > 0;
 }
 
+function trustedOrigins(env: Env, allowedHosts: string[]): string[] {
+  const origins = new Set<string>();
+  for (const candidate of [env.CANONICAL_ORIGIN, env.AUTH_BASE_FALLBACK]) {
+    try {
+      origins.add(new URL(candidate).origin);
+    } catch {
+      // Invalid deployment configuration is rejected by Better Auth's base URL handling.
+    }
+  }
+  for (const host of allowedHosts) {
+    if (host.includes("*")) {
+      origins.add(`https://${host}`);
+    } else if (!/^(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/u.test(host)) {
+      origins.add(`https://${host}`);
+    }
+  }
+  return [...origins];
+}
+
 export function createAuth(env: Env) {
   const providers = configuredProviders(env);
   const socialProviders = {
@@ -42,11 +61,7 @@ export function createAuth(env: Env) {
       protocol: "auto",
       fallback: env.AUTH_BASE_FALLBACK,
     },
-    trustedOrigins: [
-      "https://militaristhumanism.com",
-      "https://*.militaristhumanism.pages.dev",
-      "http://0.0.0.0:8788",
-    ],
+    trustedOrigins: trustedOrigins(env, allowedHosts),
     socialProviders,
     emailAndPassword: { enabled: false },
     session: {

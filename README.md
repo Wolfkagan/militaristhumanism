@@ -2,14 +2,14 @@
 
 Production source for [militaristhumanism.com](https://militaristhumanism.com/): a trilingual philosophical publication plus a Cloudflare-native community and owner analytics system.
 
-The existing English, Turkish, and German publication stays static and lightweight. Dynamic requests are limited to community, account, API, and administration routes through `public/_routes.json`.
+The existing English, Turkish, and German publication stays static and lightweight. Cloudflare Static Assets serves those files directly; unmatched community, account, API, and administration requests enter the Worker.
 
 ## Architecture
 
 ```text
-Cloudflare Pages
-├─ public/                         static publication and community assets
-└─ Pages Functions / Hono         server-rendered community and JSON API
+Cloudflare Worker
+├─ Static Assets / public         static publication and community assets
+└─ Hono Worker                    server-rendered community and JSON API
    ├─ Better Auth                 GitHub/Google OAuth and secure sessions
    ├─ Cloudflare D1               community, moderation, and aggregate data
    ├─ Workers Analytics Engine    first-party product events
@@ -23,8 +23,10 @@ There is no user-uploaded media, realtime claim, advertising tracker, fingerprin
 
 `wrangler.jsonc` binds separate remote D1 databases and Analytics Engine datasets:
 
-- top-level/local and `preview` → preview data;
+- top-level remote builds and `preview` → preview data;
 - `production` → production data.
+
+Local Wrangler runs use local emulation of the preview bindings and explicit development-only variable overrides; they do not write to remote D1 unless `--remote` is deliberately supplied.
 
 Never point a branch preview at the production D1 database. Production migrations are the last database gate, after local and remote preview verification.
 
@@ -40,14 +42,15 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Open `http://0.0.0.0:8788/community`. One command, `npm run dev`, starts the Pages static assets, Functions runtime, and local bindings after the local migration gate has been applied.
+Open `http://0.0.0.0:8788/community`. One command, `npm run dev`, starts the Worker, static assets, and local bindings after the local migration gate has been applied.
 
 Useful checks:
 
 ```powershell
 npm run typecheck
 npm test
-npm run build:functions
+npm run build:worker:preview
+npm run build:worker:production
 python scripts/verify_site.py
 ```
 
@@ -76,7 +79,9 @@ Secrets must be configured in Cloudflare, never committed:
 Optional operational secrets are documented in `.dev.vars.example`. OAuth callback URLs are:
 
 ```text
+https://community-preview.militaristhumanism.com/api/auth/callback/github
 https://militaristhumanism.com/api/auth/callback/github
+https://community-preview.militaristhumanism.com/api/auth/callback/google
 https://militaristhumanism.com/api/auth/callback/google
 ```
 
@@ -106,7 +111,7 @@ Additional defenses include bounded streaming request bodies, Zod validation, pr
 
 Two layers remain distinct:
 
-1. Cloudflare Web Analytics measures aggregate site traffic and performance through the Pages/zone integration. Do not add a duplicate beacon.
+1. Cloudflare Web Analytics measures aggregate site traffic and performance through the existing zone integration. Do not add a duplicate beacon.
 2. Analytics Engine plus D1 hourly rollups measure enumerated community/product events.
 
 Product analytics never includes message bodies, cookies, authorization headers, secrets, raw IP addresses, or browser fingerprints. The protected `/admin/analytics` view displays only available aggregate product data and links to real top discussions/categories. Traffic values that are unavailable to the application are omitted, not fabricated.
@@ -145,7 +150,7 @@ Required order:
 local migration + tests
 → branch commit and push
 → remote preview D1 migration
-→ Cloudflare branch preview
+→ isolated Cloudflare Worker preview
 → preview E2E/security/accessibility checks
 → production D1 export
 → production migration
@@ -169,7 +174,7 @@ Before a production schema migration, export the production D1 database with Wra
 Recovery order:
 
 1. Set `COMMUNITY_READ_ONLY=true` to keep public reading available while writes fail closed.
-2. Redeploy the last verified Pages production commit.
+2. Redeploy the last verified Worker production version.
 3. If data repair is required, restore into a replacement D1 database, validate it, then change the binding deliberately; do not overwrite healthy production data blindly.
 4. Add a new forward migration for schema correction.
 

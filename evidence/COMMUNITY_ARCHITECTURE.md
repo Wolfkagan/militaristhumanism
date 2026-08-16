@@ -4,7 +4,9 @@ Status: implementation complete on `codex/community-analytics-v0.1`; production 
 
 ## Request path
 
-Cloudflare Pages routes community, account, API, and administration paths into a Hono Pages Function. Static assets stay on Pages. The Function uses D1 for relational state, Better Auth for server-managed OAuth sessions, Cloudflare Turnstile for high-risk public entry points, Workers Rate Limiting for abuse control, and Analytics Engine plus D1 rollups for privacy-preserving product telemetry.
+A single Cloudflare Worker deploys the static publication and application as one versioned unit. Cloudflare Static Assets serves files from `public/` without invoking application code when an asset matches; unmatched community, account, API, and administration paths enter the Hono Worker at `src/worker.ts`. The Worker uses D1 for relational state, Better Auth for server-managed OAuth sessions, Cloudflare Turnstile for high-risk public entry points, Workers Rate Limiting for abuse control, and Analytics Engine plus D1 rollups for privacy-preserving product telemetry.
+
+This replaces the conflicting dual Pages/Workers build interpretation while preserving the existing zone and current Pages production deployment until preview acceptance is complete. Preview and production use distinct Worker environments, D1 databases, Analytics Engine datasets, rate-limit namespaces, hosts, and secrets.
 
 ## Trust boundaries
 

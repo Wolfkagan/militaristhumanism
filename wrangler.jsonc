@@ -1,14 +1,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "militaristhumanism",
-  "pages_build_output_dir": "./public",
+  "main": "./src/worker.ts",
+  "assets": {
+    "directory": "./public"
+  },
   "compatibility_date": "2026-08-16",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "APP_ENV": "development",
+    "APP_ENV": "preview",
     "CANONICAL_ORIGIN": "https://militaristhumanism.com",
-    "AUTH_ALLOWED_HOSTS": "0.0.0.0,*.militaristhumanism.pages.dev,militaristhumanism.com",
-    "AUTH_BASE_FALLBACK": "http://0.0.0.0:8788",
+    "AUTH_ALLOWED_HOSTS": "community-preview.militaristhumanism.com",
+    "AUTH_BASE_FALLBACK": "https://community-preview.militaristhumanism.com",
     "COMMUNITY_READ_ONLY": "false",
     "TURNSTILE_MODE": "required",
     "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
@@ -42,11 +45,12 @@
   },
   "env": {
     "preview": {
+      "name": "militaristhumanism-preview",
       "vars": {
         "APP_ENV": "preview",
         "CANONICAL_ORIGIN": "https://militaristhumanism.com",
-        "AUTH_ALLOWED_HOSTS": "*.militaristhumanism.pages.dev",
-        "AUTH_BASE_FALLBACK": "https://militaristhumanism.pages.dev",
+        "AUTH_ALLOWED_HOSTS": "community-preview.militaristhumanism.com",
+        "AUTH_BASE_FALLBACK": "https://community-preview.militaristhumanism.com",
         "COMMUNITY_READ_ONLY": "false",
         "TURNSTILE_MODE": "required",
         "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
@@ -75,6 +79,7 @@
       ]
     },
     "production": {
+      "name": "militaristhumanism",
       "vars": {
         "APP_ENV": "production",
         "CANONICAL_ORIGIN": "https://militaristhumanism.com",

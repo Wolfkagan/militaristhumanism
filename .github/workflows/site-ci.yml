@@ -1,4 +1,4 @@
-name: Static site validation
+name: Source and Worker validation
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Verify production source
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -27,8 +27,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Validate static site
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate publication and Worker configuration
         run: python scripts/verify_site.py
+
+      - name: Type-check Worker and E2E sources
+        run: npm run typecheck
+
+      - name: Run Workers-runtime security and product tests
+        run: npm test
+
+      - name: Build preview Worker without deploying
+        run: npm run build:worker:preview
+
+      - name: Build production Worker without deploying
+        run: npm run build:worker:production
 
       - name: Verify SHA-256 file manifest
         run: python scripts/generate_manifest.py --check

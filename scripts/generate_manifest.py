@@ -11,27 +11,33 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "evidence" / "FILE_MANIFEST_SHA256.txt"
-INCLUDE_DIRS = (ROOT / "public", ROOT / "scripts", ROOT / ".github", ROOT / "evidence")
-INCLUDE_FILES = (ROOT / ".gitignore", ROOT / "README.md")
+EXCLUDED_PARTS = {
+    ".git",
+    ".pytest_cache",
+    ".wrangler",
+    "__pycache__",
+    "coverage",
+    "node_modules",
+    "outputs",
+    "playwright-report",
+    "test-results",
+    "work",
+}
+EXCLUDED_SUFFIXES = {".bak", ".pyc", ".tmp"}
+EXCLUDED_NAMES = {".dev.vars", ".DS_Store", "Thumbs.db"}
 
 
 def included_files() -> list[Path]:
-    files: set[Path] = set()
-    for directory in INCLUDE_DIRS:
-        if not directory.exists():
+    files: list[Path] = []
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or path == OUTPUT:
             continue
-        for path in directory.rglob("*"):
-            if not path.is_file() or path == OUTPUT:
-                continue
-            relative = path.relative_to(ROOT)
-            if any(part in {"__pycache__", ".pytest_cache"} for part in relative.parts):
-                continue
-            if path.suffix.lower() in {".pyc", ".tmp", ".bak"} or path.name in {".DS_Store", "Thumbs.db"}:
-                continue
-            files.add(path)
-    for path in INCLUDE_FILES:
-        if path.is_file():
-            files.add(path)
+        relative = path.relative_to(ROOT)
+        if any(part in EXCLUDED_PARTS or part.startswith(".wrangler-") for part in relative.parts):
+            continue
+        if path.suffix.lower() in EXCLUDED_SUFFIXES or path.name in EXCLUDED_NAMES:
+            continue
+        files.append(path)
     return sorted(files, key=lambda value: value.relative_to(ROOT).as_posix())
 
 

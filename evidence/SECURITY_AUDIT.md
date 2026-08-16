@@ -24,4 +24,4 @@ Dependency audit: 0 known vulnerabilities. Static scan: no TODO/FIXME/HACK, `con
 
 ## Deployment gate
 
-Application security is ready for an isolated preview. Cloudflare dashboard WAF/managed rules, real Turnstile widget, OAuth credentials, and production deployment remain external gates and were not changed in this checkpoint.
+Application security is ready for an isolated Worker preview. Cloudflare dashboard WAF/managed rules, real Turnstile widget, OAuth credentials, and production deployment remain external gates and are not marked complete without runtime evidence.
