@@ -34,6 +34,9 @@ Product analytics excludes message bodies, tokens, cookie values, raw IP address
 
 ## Deployment identity
 
-- Production source commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
-- Active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- Last application-code commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- Last code-bearing manual Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
 - Accepted isolated preview version: `31cfa9a1-0669-4e58-bee5-e15e193e20a5`
+- PR `#7` merged the production evidence seal; both GitHub workflows and its documentation-only Cloudflare main build succeeded.
+
+Cloudflare creates a new immutable Worker version for each successful main build, including documentation-only commits. The live application's stable identity is therefore the latest successful `main` build whose application files are identical to the code-bearing commit above, rather than a version ID embedded recursively in this file.

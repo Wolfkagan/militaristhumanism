@@ -8,10 +8,10 @@ Status: production deployment complete.
 
 The static trilingual publication and the new community, authentication, moderation, and owner-analytics application now run from one Cloudflare Worker plus Static Assets deployment on `https://militaristhumanism.com`.
 
-- Production source commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
-- Active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- Last application-code commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- Last code-bearing manual Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
 - Accepted isolated preview version: `31cfa9a1-0669-4e58-bee5-e15e193e20a5`
-- Pull requests merged with green CI: `#4`, `#5`, and `#6`
+- Pull requests merged with green CI: `#4`, `#5`, `#6`, and `#7`
 
 Production version history retained by Cloudflare also provides immediate rollback targets. The two post-release corrections were narrowly scoped: exact OAuth redirect origins were added to CSP `form-action`, then Better Auth's state cookie was preserved across the custom `303` redirect.
 
@@ -44,6 +44,9 @@ The Cloudflare zone currently shows the Cloudflare managed ruleset as `Always ac
 
 1. `0efd0277-8dcc-438a-bce5-fd1260123f08` — initial community production deployment.
 2. `43e9e113-d829-45e8-82b1-604a1fbbad9e` — exact OAuth destinations allowed by CSP.
-3. `66498b08-9e42-4298-a475-4909bc50991f` — OAuth state cookie preserved on redirect; current production.
+3. `66498b08-9e42-4298-a475-4909bc50991f` — OAuth state cookie preserved on redirect; last code-bearing manual release.
+4. PR `#7` — documentation-only production evidence seal; GitHub source validation, canonical production verification, and Cloudflare main build all succeeded without application-file changes.
+
+Cloudflare creates a new immutable version for successful documentation-only main builds. For that reason, this report does not call the recursive evidence build's version ID a permanent release identifier; production is the latest successful `main` deployment, with application files anchored to the code commit above.
 
 The earlier preview authorization error `7403` is resolved and is no longer a release gate.
