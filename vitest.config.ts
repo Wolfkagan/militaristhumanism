@@ -1,11 +1,10 @@
 import { defineConfig } from "vitest/config";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
-import { randomBytes } from "node:crypto";
 
 const migrations = await readD1Migrations("./migrations");
 
 const testRateLimit = (namespaceId: string, limit = 1000) => ({ namespace_id: namespaceId, simple: { limit, period: 60 as const } });
-const ephemeralTestSecret = () => randomBytes(32).toString("base64url");
+const ephemeralTestSecret = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
 
 export default defineConfig({
   plugins: [
