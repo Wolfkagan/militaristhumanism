@@ -124,7 +124,7 @@ try {
     $notFound = Get-Response -Uri "$BaseUrl/nonexistent-path-v01-verification" -Method GET
     Assert-Equal "NOT_FOUND_STATUS" ([int]$notFound.StatusCode) 404
     $notFoundHtml = Read-Body -Response $notFound
-    Assert-Contains "NOT_FOUND_BODY" $notFoundHtml "Page Not Found"
+    Assert-Contains "NOT_FOUND_BODY" $notFoundHtml "The requested page was not found."
     $notFound.Dispose()
 
     $turkish = Get-Response -Uri "$BaseUrl/tr/" -Method GET
