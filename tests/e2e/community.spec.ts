@@ -48,7 +48,7 @@ test("member, moderator, and admin complete the community workflow", async ({ pa
   await page.goto("/community/new");
   await page.getByLabel("Title").fill(title);
   await page.getByLabel("Category").selectOption("cat_philosophy");
-  await page.getByLabel("Discussion").fill(`E2E body ${unique}. This is long enough to test a complete authenticated publication workflow.`);
+  await page.getByRole("textbox", { name: "Discussion", exact: true }).fill(`E2E body ${unique}. This is long enough to test a complete authenticated publication workflow.`);
   await page.getByRole("button", { name: "Publish discussion" }).click();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
 
@@ -74,13 +74,26 @@ test("member, moderator, and admin complete the community workflow", async ({ pa
   await authenticate(page, "e2e-moderator");
   await page.goto("/admin/moderation?status=open");
   const report = page.locator(".report-card", { hasText: reportDetails });
-  await report.getByRole("button", { name: "Begin review" }).click();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith("/api/admin/reports/review") && response.status() === 200),
+    report.getByRole("button", { name: "Begin review" }).click(),
+  ]);
+  await page.waitForURL(/\/admin\/moderation\?status=reviewing$/u);
   const reviewingReport = page.locator(".report-card", { hasText: reportDetails });
   await reviewingReport.getByLabel("Target-action reason").fill("E2E target action with a reviewable reason.");
-  await reviewingReport.getByRole("button", { name: "Hide target" }).click();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith("/api/admin/moderation") && response.status() === 200),
+    reviewingReport.getByRole("button", { name: "Hide target" }).click(),
+  ]);
+  await page.waitForURL(/\/admin\/moderation(?:\?|$)/u);
+  await page.goto("/admin/moderation?status=reviewing");
   const stillReviewing = page.locator(".report-card", { hasText: reportDetails });
   await stillReviewing.getByLabel("Resolution reason").fill("E2E report resolved after a complete review.");
-  await stillReviewing.getByRole("button", { name: "Resolve" }).click();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith("/api/admin/moderation") && response.status() === 200),
+    stillReviewing.getByRole("button", { name: "Resolve" }).click(),
+  ]);
+  await page.waitForURL(/\/admin\/moderation(?:\?|$)/u);
 
   await authenticate(page, "e2e-member");
   await page.goto("/notifications");

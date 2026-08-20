@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8788 --binding APP_ENV=development --binding AUTH_ALLOWED_HOSTS=0.0.0.0,127.0.0.1,localhost --binding AUTH_BASE_FALLBACK=http://0.0.0.0:8788",
-    "dev:e2e": "wrangler dev --port 8789 --binding APP_ENV=test --binding TURNSTILE_MODE=disabled --binding AUTH_ALLOWED_HOSTS=0.0.0.0,127.0.0.1,localhost --binding AUTH_BASE_FALLBACK=http://127.0.0.1:8789",
+    "dev": "wrangler dev --port 8788 --var APP_ENV:development --var AUTH_ALLOWED_HOSTS:0.0.0.0,127.0.0.1,localhost --var AUTH_BASE_FALLBACK:http://0.0.0.0:8788",
+    "dev:e2e": "wrangler dev --port 8789 --var APP_ENV:test --var TURNSTILE_MODE:disabled --var AUTH_ALLOWED_HOSTS:0.0.0.0,127.0.0.1,localhost --var AUTH_BASE_FALLBACK:http://127.0.0.1:8789",
     "build:worker": "wrangler deploy --dry-run --outdir .wrangler-worker-check",
     "build:worker:preview": "wrangler deploy --dry-run --env preview --outdir .wrangler-worker-preview-check",
     "build:worker:production": "wrangler deploy --dry-run --env production --outdir .wrangler-worker-production-check",

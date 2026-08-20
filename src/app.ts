@@ -85,6 +85,7 @@ import {
   beginReportReview,
   cleanupRetention,
   getAnalytics,
+  getCommunityTrends,
   getOverviewStats,
   getTopContent,
   listAdminUsers,
@@ -539,8 +540,12 @@ app.get("/admin/overview", async (c) => {
 app.get("/admin/analytics", async (c) => {
   const session = requireRole(c, "admin");
   const range = c.req.query("range") ?? "7d";
-  const [points, top] = await Promise.all([getAnalytics(c.env, range), getTopContent(c.env, range)]);
-  return c.html(adminAnalyticsPage(session, points, range, top));
+  const [points, trends, top] = await Promise.all([
+    getAnalytics(c.env, range),
+    getCommunityTrends(c.env, range),
+    getTopContent(c.env, range),
+  ]);
+  return c.html(adminAnalyticsPage(session, points, trends, range, top));
 });
 app.get("/admin/community", async (c) => {
   const session = requireRole(c, "admin");
@@ -580,7 +585,13 @@ app.get("/api/admin/overview", async (c) => {
 });
 app.get("/api/admin/analytics", async (c) => {
   requireRole(c, "admin");
-  return c.json({ points: await getAnalytics(c.env, c.req.query("range")) });
+  const range = c.req.query("range");
+  const [points, trends, top] = await Promise.all([
+    getAnalytics(c.env, range),
+    getCommunityTrends(c.env, range),
+    getTopContent(c.env, range),
+  ]);
+  return c.json({ points, trends, top });
 });
 app.get("/api/admin/reports", async (c) => {
   requireRole(c, "moderator");

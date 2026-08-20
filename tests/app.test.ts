@@ -33,6 +33,8 @@ describe("public application boundaries", () => {
     expect(response.status).toBe(200);
     expect(body).toContain('value="google"');
     expect(body).toContain("Continue with Google");
+    expect(body).toContain("verified Google account");
+    expect(body).not.toContain("Apple");
     expect(body.toLocaleLowerCase("en-US")).not.toContain("github");
   });
 
@@ -136,8 +138,12 @@ describe("public application boundaries", () => {
     const reportPayload = await reportResponse.json() as { report: { publicId: string } };
 
     const moderatorPage = await request("/admin/moderation", { headers: headersFor("e2e-moderator", "text/html") });
-    const moderatorCsrf = (await moderatorPage.text()).match(/name="csrf" value="([^"]+)"/u)?.[1];
+    const moderatorBody = await moderatorPage.text();
+    const moderatorCsrf = moderatorBody.match(/name="csrf" value="([^"]+)"/u)?.[1];
     expect(moderatorCsrf).toBeTruthy();
+    expect(moderatorBody).toContain('href="/admin/moderation"');
+    expect(moderatorBody).not.toContain('href="/admin/overview"');
+    expect(moderatorBody).not.toContain('href="/admin/analytics"');
     const moderatorHeaders = {
       ...headersFor("e2e-moderator"),
       origin: "https://militaristhumanism.com",
@@ -151,6 +157,10 @@ describe("public application boundaries", () => {
     expect(resolve.status).toBe(200);
     const admin = await request("/admin/analytics", { headers: headersFor("e2e-admin", "text/html") });
     expect(admin.status).toBe(200);
-    expect(await admin.text()).toContain("Product analytics</h1>");
+    const adminBody = await admin.text();
+    expect(adminBody).toContain("Product analytics</h1>");
+    expect(adminBody).toContain("Community activity over time");
+    expect(adminBody).toContain("New members</h3>");
+    expect(adminBody).toContain("Moderation events</h3>");
   });
 });
