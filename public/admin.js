@@ -8,7 +8,9 @@
       const button = submitter instanceof HTMLButtonElement ? submitter : form.querySelector("button[type='submit']");
       if (button instanceof HTMLButtonElement) button.disabled = true;
       try {
-        const response = await fetch(form.action, { method: form.dataset.method || form.method || "POST", headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: new URLSearchParams(data), credentials: "same-origin" });
+        const endpoint = form.getAttribute("action");
+        if (!endpoint) throw new Error("The form endpoint is unavailable.");
+        const response = await fetch(endpoint, { method: form.dataset.method || form.getAttribute("method") || "POST", headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: new URLSearchParams(data), credentials: "same-origin" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error?.message || "The request could not be completed.");
         const returnField = form.querySelector("input[name='returnTo']");

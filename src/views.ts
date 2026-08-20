@@ -1,4 +1,4 @@
-import type { AdminThreadRow, AdminUserRow, AnalyticsPoint, AuditRow, OverviewStats, TopContent } from "./admin-data";
+import type { AdminThreadRow, AdminUserRow, AnalyticsPoint, AuditRow, CommunityTrendPoint, OverviewStats, TopContent } from "./admin-data";
 import type { CommunityStats, PageResult, ReactionSummary, SearchRow, TargetReactionSummary, ThreadDetail } from "./community-data";
 import type { NotificationRow, PublicProfile } from "./member-data";
 import type { AppSession, CategoryRow, PostViewRow, ReportRow, ThreadCardRow } from "./model";
@@ -36,7 +36,7 @@ function avatar(name: string): string {
 function nav(session: AppSession | null): string {
   const member = session === null
     ? `<a class="nav-action" href="/community/sign-in">Sign in</a>`
-    : `<a href="/notifications">Notifications</a><a href="/u/${esc(session.profile.handle)}">${esc(session.profile.display_name)}</a>${session.profile.role !== "member" ? '<a href="/admin/overview">Admin</a>' : ""}<form action="/api/auth/sign-out" method="post" class="inline-form"><button class="nav-action" type="submit">Sign out</button></form>`;
+    : `<a href="/notifications">Notifications</a><a href="/u/${esc(session.profile.handle)}">${esc(session.profile.display_name)}</a>${session.profile.role !== "member" ? '<a href="/admin">Admin</a>' : ""}<form action="/api/auth/sign-out" method="post" class="inline-form"><button class="nav-action" type="submit">Sign out</button></form>`;
   return `<header class="site-header"><a class="brand" href="/">${siteName}</a><nav aria-label="Primary"><a href="/community">Community</a><a href="/community/rules">Rules</a><a href="/community/search">Search</a>${member}</nav></header>`;
 }
 
@@ -198,15 +198,21 @@ export function signInPage(
   configured: boolean,
 ): string {
   const providerLabels: Record<string, string> = { google: "Google", apple: "Apple" };
+  const activeProviderLabels = providers.map((provider) => providerLabels[provider] ?? provider);
+  const providerPhrase = activeProviderLabels.length === 0
+    ? "a configured identity provider"
+    : activeProviderLabels.length === 1
+      ? activeProviderLabels[0]!
+      : `${activeProviderLabels.slice(0, -1).join(", ")} or ${activeProviderLabels.at(-1)!}`;
   const providerButtons = providers.map((provider) => `<button class="button provider-${esc(provider)}" type="submit" name="provider" value="${esc(provider)}">Continue with ${esc(providerLabels[provider] ?? provider)}</button>`).join("");
   return layout({
     title: "Create account or sign in",
-    description: "Create an account or sign in securely with Google or Apple.",
+    description: `Create an account or sign in securely with ${providerPhrase}.`,
     pathname: "/community/sign-in",
     session,
     noindex: true,
     usesTurnstile: siteKey !== undefined,
-    body: `<section class="sign-in-card"><p class="eyebrow">Secure access</p><h1>Create an account or sign in</h1><p>Reading is public. Publishing requires a verified Google or Apple account and a secure, server-managed session.</p>${configured ? `<form action="/community/sign-in" method="post">${turnstileWidget(siteKey, "oauth_start")}<input type="hidden" name="returnTo" value="${esc(returnTo)}"><div class="provider-list">${providerButtons}</div></form>` : '<p class="notice">Sign-in providers are not configured in this environment.</p>'}<p class="fine-print">By continuing, you agree to the community rules and privacy terms.</p></section>`,
+    body: `<section class="sign-in-card"><p class="eyebrow">Secure access</p><h1>Create an account or sign in</h1><p>Reading is public. Publishing requires a verified ${esc(providerPhrase)} account and a secure, server-managed session.</p>${configured ? `<form action="/community/sign-in" method="post">${turnstileWidget(siteKey, "oauth_start")}<input type="hidden" name="returnTo" value="${esc(returnTo)}"><div class="provider-list">${providerButtons}</div></form>` : '<p class="notice">Sign-in providers are not configured in this environment.</p>'}<p class="fine-print">By continuing, you agree to the community rules and privacy terms.</p></section>`,
   });
 }
 
@@ -363,8 +369,10 @@ export function profilePage(
   });
 }
 
-function adminNav(active: string): string {
-  const items = ["overview", "analytics", "community", "moderation", "users", "reports", "audit"];
+function adminNav(session: AppSession, active: string): string {
+  const items = session.profile.role === "admin"
+    ? ["overview", "analytics", "community", "moderation", "users", "reports", "audit"]
+    : ["moderation", "users", "reports"];
   return `<nav class="admin-nav" aria-label="Administration">${items.map((item) => `<a href="/admin/${item}" ${active === item ? 'aria-current="page"' : ""}>${item[0]!.toUpperCase()}${item.slice(1)}</a>`).join("")}</nav>`;
 }
 
@@ -376,7 +384,7 @@ function adminLayout(session: AppSession, active: string, title: string, body: s
     session,
     noindex: true,
     admin: true,
-    body: `${adminNav(active)}${body}`,
+    body: `${adminNav(session, active)}${body}`,
   });
 }
 
@@ -394,12 +402,39 @@ function rangeSelector(path: string, current: string): string {
   return `<nav class="tabs" aria-label="Time range">${["24h", "7d", "30d", "90d"].map((range) => `<a href="${path}?range=${range}" ${range === current ? 'aria-current="page"' : ""}>${range}</a>`).join("")}</nav>`;
 }
 
-export function adminAnalyticsPage(session: AppSession, points: AnalyticsPoint[], range: string, top: TopContent): string {
+type TrendMetric = "new_members" | "threads_created" | "replies_created" | "moderation_events";
+
+function trendChart(id: string, label: string, points: CommunityTrendPoint[], metric: TrendMetric): string {
+  const values = points.map((point) => Number(point[metric]));
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const maximum = Math.max(1, ...values);
+  const width = 320;
+  const height = 120;
+  const padding = 10;
+  const coordinates = values.map((value, index) => {
+    const x = values.length <= 1 ? width / 2 : padding + (index / (values.length - 1)) * (width - padding * 2);
+    const y = height - padding - (value / maximum) * (height - padding * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const first = points.at(0)?.bucket_start ?? "";
+  const last = points.at(-1)?.bucket_start ?? "";
+  return `<article class="trend-card"><div><h3 id="${esc(id)}-title">${esc(label)}</h3><strong>${total}</strong></div>${points.length === 0 ? '<p class="empty">No activity in range.</p>' : `<svg viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="${esc(id)}-title ${esc(id)}-description"><desc id="${esc(id)}-description">${esc(label)} from ${esc(first)} to ${esc(last)}; total ${total}.</desc><line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" class="trend-gridline"></line><line x1="${padding}" y1="${height / 2}" x2="${width - padding}" y2="${height / 2}" class="trend-gridline"></line><polyline points="${coordinates}" class="trend-line"></polyline></svg><div class="trend-range"><time datetime="${esc(first)}">${esc(first.slice(0, 10))}</time><time datetime="${esc(last)}">${esc(last.slice(0, 10))}</time></div>`}</article>`;
+}
+
+export function adminAnalyticsPage(session: AppSession, points: AnalyticsPoint[], trends: CommunityTrendPoint[], range: string, top: TopContent): string {
   const totals = new Map<string, number>();
   for (const point of points) totals.set(point.event_type, (totals.get(point.event_type) ?? 0) + point.event_count);
   const rows = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
   const maximum = Math.max(1, ...rows.map(([, count]) => count));
-  return adminLayout(session, "analytics", "Product analytics", `<section class="page-head"><p class="eyebrow">First-party aggregates</p><div class="section-heading"><h1>Product analytics</h1>${rangeSelector("/admin/analytics", range)}</div><p>No message bodies, raw IP addresses, session tokens, or fingerprints are stored in these aggregates.</p></section><section class="chart" aria-labelledby="events-chart"><h2 id="events-chart">Engagement and operations</h2>${rows.length === 0 ? '<p class="empty">No aggregate events in this range.</p>' : rows.map(([event, total]) => `<div class="bar-row"><span>${esc(event)}</span><svg viewBox="0 0 100 10" role="img" aria-label="${esc(event)}: ${total}"><rect width="100" height="10" class="bar-track"></rect><rect width="${Math.max(1, Math.round((total / maximum) * 100))}" height="10" class="bar-value"></rect></svg><strong>${total}</strong></div>`).join("")}</section><section class="admin-split"><div><h2>Top discussions</h2>${top.discussions.length === 0 ? '<p class="empty">No activity in range.</p>' : `<ol class="ranked-list">${top.discussions.map((item) => `<li><a href="/community/t/${esc(item.slug)}-${esc(item.public_id)}">${esc(item.title)}</a><span>${item.reply_count} replies · ${item.reaction_count} reactions</span></li>`).join("")}</ol>`}</div><div><h2>Top categories</h2>${top.categories.length === 0 ? '<p class="empty">No category activity.</p>' : `<ol class="ranked-list">${top.categories.map((item) => `<li><a href="/community/c/${esc(item.slug)}">${esc(item.name)}</a><span>${item.thread_count} discussions · ${item.reply_count} replies</span></li>`).join("")}</ol>`}</div></section>`);
+  const topDiscussionMaximum = Math.max(1, ...top.discussions.map((item) => item.activity));
+  const topCategoryMaximum = Math.max(1, ...top.categories.map((item) => item.activity));
+  const trendCharts = [
+    trendChart("members-trend", "New members", trends, "new_members"),
+    trendChart("threads-trend", "Threads created", trends, "threads_created"),
+    trendChart("replies-trend", "Replies created", trends, "replies_created"),
+    trendChart("moderation-trend", "Moderation events", trends, "moderation_events"),
+  ].join("");
+  return adminLayout(session, "analytics", "Product analytics", `<section class="page-head"><p class="eyebrow">First-party aggregates</p><div class="section-heading"><h1>Product analytics</h1>${rangeSelector("/admin/analytics", range)}</div><p>No message bodies, raw IP addresses, session tokens, or fingerprints are stored in these aggregates.</p></section><section class="traffic-source" aria-labelledby="traffic-source-title"><div><h2 id="traffic-source-title">Website traffic</h2><p>Authoritative visitor, page-view, and traffic-over-time metrics remain in Cloudflare Web Analytics. They are not duplicated or estimated here.</p></div><a class="button secondary" href="https://dash.cloudflare.com/" target="_blank" rel="noopener noreferrer">Open Web Analytics</a></section><section class="chart" aria-labelledby="community-trends-title"><h2 id="community-trends-title">Community activity over time</h2><div class="trend-grid">${trendCharts}</div></section><section class="chart" aria-labelledby="events-chart"><h2 id="events-chart">Engagement and operations</h2>${rows.length === 0 ? '<p class="empty">No aggregate events in this range.</p>' : rows.map(([event, total]) => `<div class="bar-row"><span>${esc(event)}</span><svg viewBox="0 0 100 10" role="img" aria-label="${esc(event)}: ${total}"><rect width="100" height="10" class="bar-track"></rect><rect width="${Math.max(1, Math.round((total / maximum) * 100))}" height="10" class="bar-value"></rect></svg><strong>${total}</strong></div>`).join("")}</section><section class="admin-split"><div><h2>Top discussions</h2>${top.discussions.length === 0 ? '<p class="empty">No activity in range.</p>' : `<ol class="ranked-list">${top.discussions.map((item) => `<li><a href="/community/t/${esc(item.slug)}-${esc(item.public_id)}">${esc(item.title)}</a><span>${item.reply_count} replies · ${item.reaction_count} reactions</span><progress max="${topDiscussionMaximum}" value="${item.activity}" aria-label="${esc(item.title)} activity: ${item.activity}"></progress></li>`).join("")}</ol>`}</div><div><h2>Top categories</h2>${top.categories.length === 0 ? '<p class="empty">No category activity.</p>' : `<ol class="ranked-list">${top.categories.map((item) => `<li><a href="/community/c/${esc(item.slug)}">${esc(item.name)}</a><span>${item.thread_count} discussions · ${item.reply_count} replies</span><progress max="${topCategoryMaximum}" value="${item.activity}" aria-label="${esc(item.name)} activity: ${item.activity}"></progress></li>`).join("")}</ol>`}</div></section>`);
 }
 
 export function adminCommunityPage(session: AppSession, categories: CategoryRow[], threads: AdminThreadRow[], csrf: string, readOnly: boolean): string {

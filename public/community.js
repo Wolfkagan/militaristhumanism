@@ -12,8 +12,10 @@
       if (button instanceof HTMLButtonElement) button.disabled = true;
       if (status instanceof HTMLElement) status.textContent = "Working…";
       try {
-        const response = await fetch(form.action, {
-          method: form.dataset.method || form.method || "POST",
+        const endpoint = form.getAttribute("action");
+        if (!endpoint) throw new Error("The form endpoint is unavailable.");
+        const response = await fetch(endpoint, {
+          method: form.dataset.method || form.getAttribute("method") || "POST",
           headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
           body: new URLSearchParams(data),
           credentials: "same-origin",

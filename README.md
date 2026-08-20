@@ -10,7 +10,7 @@ The existing English, Turkish, and German publication stays static and lightweig
 Cloudflare Worker
 ├─ Static Assets / public         static publication and community assets
 └─ Hono Worker                    server-rendered community and JSON API
-   ├─ Better Auth                 GitHub/Google OAuth and secure sessions
+   ├─ Better Auth                 Google OAuth and secure sessions
    ├─ Cloudflare D1               community, moderation, and aggregate data
    ├─ Workers Analytics Engine    first-party product events
    ├─ Turnstile                   sign-in and high-risk write challenges

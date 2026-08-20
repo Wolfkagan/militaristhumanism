@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createPost, createThread, listPosts, listThreads, searchCommunity, toggleReaction, toggleThreadRelationship } from "../src/community-data";
 import { deletePost, getPostByPublicId, getThreadByPublicId } from "../src/member-data";
+import { getCommunityTrends } from "../src/admin-data";
 import { seedUser, testEnv } from "./helpers";
 
 describe("community D1 model", () => {
@@ -113,5 +114,19 @@ describe("community D1 model", () => {
     expect(first.nextCursor).not.toBeNull();
     expect(second.items).toHaveLength(3);
     expect(new Set([...first.items, ...second.items].map((post) => post.public_id)).size).toBe(53);
+  });
+
+  it("builds first-party community time series from authoritative tables", async () => {
+    await seedUser("analytics-member");
+    const thread = await createThread(testEnv, "analytics-member", {
+      title: "Community trends must come from authoritative records",
+      body: "This discussion verifies member, thread, and reply trend aggregation without invented traffic data.",
+      categoryId: "cat_science",
+    });
+    await createPost(testEnv, thread, "analytics-member", { body: "A real reply contributes to the time series." });
+    const trends = await getCommunityTrends(testEnv, "24h");
+    expect(trends).toHaveLength(1);
+    expect(trends[0]).toMatchObject({ new_members: 1, threads_created: 1, replies_created: 1, moderation_events: 0 });
+    expect(trends[0]?.bucket_start).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:00:00Z$/u);
   });
 });

@@ -88,6 +88,7 @@
         "AUTH_BASE_FALLBACK": "https://militaristhumanism.com",
         "COMMUNITY_READ_ONLY": "false",
         "TURNSTILE_MODE": "required",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAER4iQ2BS18TIcGY",
         "ANALYTICS_DATASET": "militaristhumanism_community_prod"
       },
       "d1_databases": [

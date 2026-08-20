@@ -26,6 +26,14 @@ export interface AnalyticsPoint {
   average_latency_ms: number;
 }
 
+export interface CommunityTrendPoint {
+  bucket_start: string;
+  new_members: number;
+  threads_created: number;
+  replies_created: number;
+  moderation_events: number;
+}
+
 export interface AdminUserRow {
   user_id: string;
   public_id: string;
@@ -133,6 +141,40 @@ export async function getAnalytics(env: Env, range: string | undefined): Promise
   )
     .bind(`-${hours} hours`)
     .all<AnalyticsPoint>();
+  return result.results;
+}
+
+export async function getCommunityTrends(env: Env, range: string | undefined): Promise<CommunityTrendPoint[]> {
+  const hours = rangeHours(range);
+  const modifier = `-${hours} hours`;
+  const bucket = hours <= 24
+    ? "strftime('%Y-%m-%dT%H:00:00Z', created_at)"
+    : "strftime('%Y-%m-%dT00:00:00Z', created_at)";
+  const result = await env.DB.prepare(
+    `SELECT bucket_start,
+            SUM(new_members) AS new_members,
+            SUM(threads_created) AS threads_created,
+            SUM(replies_created) AS replies_created,
+            SUM(moderation_events) AS moderation_events
+     FROM (
+       SELECT ${bucket} AS bucket_start, COUNT(*) AS new_members, 0 AS threads_created,
+              0 AS replies_created, 0 AS moderation_events
+       FROM user_profiles WHERE datetime(created_at) >= datetime('now', ?) GROUP BY bucket_start
+       UNION ALL
+       SELECT ${bucket} AS bucket_start, 0, COUNT(*), 0, 0
+       FROM threads WHERE datetime(created_at) >= datetime('now', ?) GROUP BY bucket_start
+       UNION ALL
+       SELECT ${bucket} AS bucket_start, 0, 0, COUNT(*), 0
+       FROM posts WHERE datetime(created_at) >= datetime('now', ?) GROUP BY bucket_start
+       UNION ALL
+       SELECT ${bucket} AS bucket_start, 0, 0, 0, COUNT(*)
+       FROM moderation_actions WHERE datetime(created_at) >= datetime('now', ?) GROUP BY bucket_start
+     )
+     WHERE bucket_start IS NOT NULL
+     GROUP BY bucket_start ORDER BY bucket_start ASC LIMIT 366`,
+  )
+    .bind(modifier, modifier, modifier, modifier)
+    .all<CommunityTrendPoint>();
   return result.results;
 }
 
