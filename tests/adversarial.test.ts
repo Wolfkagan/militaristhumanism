@@ -8,8 +8,8 @@ import { validateTurnstile } from "../src/turnstile";
 import { seedUser, testEnv } from "./helpers";
 
 const origin = "https://militaristhumanism.com";
-const e2eToken = "workers-runtime-e2e-test-token-with-more-than-thirty-two-characters";
-const authSecret = "test-secret-that-is-at-least-thirty-two-characters-long";
+const e2eToken = testEnv.E2E_TEST_TOKEN;
+const authSecret = testEnv.AUTH_SECRET;
 
 async function request(path: string, init?: RequestInit, requestEnv: Env = testEnv): Promise<Response> {
   const ctx = createExecutionContext();
@@ -386,7 +386,7 @@ describe("adversarial application boundaries", () => {
       ...testEnv,
       APP_ENV: "preview",
       TURNSTILE_MODE: "required",
-      TURNSTILE_SECRET: "turnstile-secret-long-enough",
+      TURNSTILE_SECRET: testEnv.AUTH_SECRET,
     } as Env;
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       success: true,
