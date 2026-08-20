@@ -129,7 +129,7 @@ export const reportReviewSchema = z.object({
 });
 
 export const oauthStartSchema = z.object({
-  provider: z.enum(["github", "google"]),
+  provider: z.enum(["google", "apple"]),
   returnTo: z.string().max(512).optional(),
   turnstileToken: z.string().max(4_096),
 });

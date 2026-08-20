@@ -58,6 +58,12 @@ export async function validateTurnstile(
   const hostnameMismatch =
     (env.APP_ENV === "production" || env.APP_ENV === "preview") && verifiedHostname !== requestHostname;
   if (result.success !== true || result.action !== expectedAction || hostnameMismatch) {
+    console.warn("turnstile_verification_rejected", {
+      success: result.success === true,
+      actionMatches: result.action === expectedAction,
+      hostnameMatches: !hostnameMismatch,
+      errorCodes: result["error-codes"] ?? [],
+    });
     throw new AppError(403, "TURNSTILE_FAILED", "Human verification failed. Please try again.");
   }
 }

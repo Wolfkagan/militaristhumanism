@@ -4,6 +4,7 @@ import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-worker
 const migrations = await readD1Migrations("./migrations");
 
 const testRateLimit = (namespaceId: string, limit = 1000) => ({ namespace_id: namespaceId, simple: { limit, period: 60 as const } });
+const ephemeralTestSecret = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
 
 export default defineConfig({
   plugins: [
@@ -31,16 +32,18 @@ export default defineConfig({
           TURNSTILE_MODE: "disabled",
           TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
           ANALYTICS_DATASET: "community_test",
-          AUTH_SECRET: "test-secret-that-is-at-least-thirty-two-characters-long",
-          GITHUB_CLIENT_ID: "test-client-id",
-          GITHUB_CLIENT_SECRET: "test-client-secret",
-          GOOGLE_CLIENT_ID: "",
-          GOOGLE_CLIENT_SECRET: "",
+          AUTH_SECRET: ephemeralTestSecret(),
+          GOOGLE_CLIENT_ID: ephemeralTestSecret(),
+          GOOGLE_CLIENT_SECRET: ephemeralTestSecret(),
+          APPLE_CLIENT_ID: "",
+          APPLE_TEAM_ID: "",
+          APPLE_KEY_ID: "",
+          APPLE_PRIVATE_KEY: "",
           TURNSTILE_SECRET: "",
           ADMIN_BOOTSTRAP_EMAILS: "",
           ANALYTICS_READ_TOKEN: "",
           CLOUDFLARE_ACCOUNT_ID: "",
-          E2E_TEST_TOKEN: "workers-runtime-e2e-test-token-with-more-than-thirty-two-characters",
+          E2E_TEST_TOKEN: ephemeralTestSecret(),
         },
       },
     }),

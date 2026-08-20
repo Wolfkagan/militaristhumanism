@@ -71,18 +71,18 @@ Non-secret bindings are declared in `wrangler.jsonc` and typed by the generated 
 Secrets must be configured in Cloudflare, never committed:
 
 - `AUTH_SECRET` — at least 32 random characters;
-- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`;
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` when Google is enabled;
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`;
+- `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` when Apple is enabled;
 - `TURNSTILE_SECRET`;
 - `ADMIN_BOOTSTRAP_EMAILS` — comma-separated initial owner emails.
 
 Optional operational secrets are documented in `.dev.vars.example`. OAuth callback URLs are:
 
 ```text
-https://community-preview.militaristhumanism.com/api/auth/callback/github
-https://militaristhumanism.com/api/auth/callback/github
 https://community-preview.militaristhumanism.com/api/auth/callback/google
 https://militaristhumanism.com/api/auth/callback/google
+https://community-preview.militaristhumanism.com/api/auth/callback/apple
+https://militaristhumanism.com/api/auth/callback/apple
 ```
 
 Use only providers whose complete client ID and secret are configured. The application does not expose a broken provider button.

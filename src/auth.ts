@@ -1,19 +1,27 @@
 import { betterAuth } from "better-auth";
+import { importPKCS8, SignJWT } from "jose";
 import type { AppSession, ProfileRow, Role } from "./model";
 import { timingSafeTextEqual } from "./security";
 import { createPublicId } from "./db";
+
+export type OAuthProviderId = "google" | "apple";
 
 function configured(value: string | undefined): value is string {
   return value !== undefined && value.trim().length > 0;
 }
 
-export function configuredProviders(env: Env): Array<"github" | "google"> {
-  const providers: Array<"github" | "google"> = [];
-  if (configured(env.GITHUB_CLIENT_ID) && configured(env.GITHUB_CLIENT_SECRET)) {
-    providers.push("github");
-  }
+export function configuredProviders(env: Env): OAuthProviderId[] {
+  const providers: OAuthProviderId[] = [];
   if (configured(env.GOOGLE_CLIENT_ID) && configured(env.GOOGLE_CLIENT_SECRET)) {
     providers.push("google");
+  }
+  if (
+    configured(env.APPLE_CLIENT_ID) &&
+    configured(env.APPLE_TEAM_ID) &&
+    configured(env.APPLE_KEY_ID) &&
+    configured(env.APPLE_PRIVATE_KEY)
+  ) {
+    providers.push("apple");
   }
   return providers;
 }
@@ -23,7 +31,7 @@ export function authIsConfigured(env: Env): boolean {
 }
 
 function trustedOrigins(env: Env, allowedHosts: string[]): string[] {
-  const origins = new Set<string>();
+  const origins = new Set<string>(["https://appleid.apple.com"]);
   for (const candidate of [env.CANONICAL_ORIGIN, env.AUTH_BASE_FALLBACK]) {
     try {
       origins.add(new URL(candidate).origin);
@@ -41,14 +49,39 @@ function trustedOrigins(env: Env, allowedHosts: string[]): string[] {
   return [...origins];
 }
 
+async function generateAppleClientSecret(env: Env): Promise<string> {
+  const privateKey = env.APPLE_PRIVATE_KEY.replace(/\\n/gu, "\n");
+  const signingKey = await importPKCS8(privateKey, "ES256");
+  const now = Math.floor(Date.now() / 1_000);
+  return new SignJWT({})
+    .setProtectedHeader({ alg: "ES256", kid: env.APPLE_KEY_ID })
+    .setIssuer(env.APPLE_TEAM_ID)
+    .setSubject(env.APPLE_CLIENT_ID)
+    .setAudience("https://appleid.apple.com")
+    .setIssuedAt(now)
+    .setExpirationTime(now + 180 * 24 * 60 * 60)
+    .sign(signingKey);
+}
+
 export function createAuth(env: Env) {
   const providers = configuredProviders(env);
   const socialProviders = {
-    ...(providers.includes("github")
-      ? { github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET } }
-      : {}),
     ...(providers.includes("google")
-      ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            prompt: "select_account" as const,
+          },
+        }
+      : {}),
+    ...(providers.includes("apple")
+      ? {
+          apple: async () => ({
+            clientId: env.APPLE_CLIENT_ID,
+            clientSecret: await generateAppleClientSecret(env),
+          }),
+        }
       : {}),
   };
   const allowedHosts = env.AUTH_ALLOWED_HOSTS.split(",").map((host) => host.trim()).filter(Boolean);
