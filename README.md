@@ -2,6 +2,8 @@
 
 Production source for [militaristhumanism.com](https://militaristhumanism.com/): a trilingual philosophical publication plus a Cloudflare-native community and owner analytics system.
 
+Production status (2026-08-20): community, Google sign-in, moderation, administrator analytics, Turnstile, D1, and the hardened Cloudflare Worker are live. Apple remains conditional; GitHub is not a sign-in provider.
+
 The existing English, Turkish, and German publication stays static and lightweight. Cloudflare Static Assets serves those files directly; unmatched community, account, API, and administration requests enter the Worker.
 
 ## Architecture
@@ -73,8 +75,9 @@ Secrets must be configured in Cloudflare, never committed:
 - `AUTH_SECRET` — at least 32 random characters;
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`;
 - `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` when Apple is enabled;
-- `TURNSTILE_SECRET`;
-- `ADMIN_BOOTSTRAP_EMAILS` — comma-separated initial owner emails.
+- `TURNSTILE_SECRET`.
+
+`ADMIN_BOOTSTRAP_EMAILS` is a private Cloudflare control-plane environment value containing the comma-separated initial owner allow-list. It is not hardcoded, committed, or included in evidence.
 
 Optional operational secrets are documented in `.dev.vars.example`. OAuth callback URLs are:
 
@@ -152,7 +155,7 @@ local migration + tests
 → remote preview D1 migration
 → isolated Cloudflare Worker preview
 → preview E2E/security/accessibility checks
-→ production D1 export
+→ production D1 Time Travel bookmark (or export when supported by the schema)
 → production migration
 → main deployment
 → external verification
@@ -169,7 +172,7 @@ Do not run the production command before preview evidence is sealed.
 
 ## Backup, rollback, and incidents
 
-Before a production schema migration, export the production D1 database with Wrangler to a timestamped file outside source control and record its SHA-256 in deployment evidence. Migrations are forward-only; never edit one already applied remotely.
+Before a production schema migration, capture a D1 Time Travel bookmark. Also export the database to a timestamped file outside source control when the current schema is export-compatible, and record only non-secret recovery metadata in deployment evidence. FTS5 virtual tables can prevent a full D1 SQL export, so a failed read-only export must not replace the Time Travel recovery point. Migrations are forward-only; never edit one already applied remotely.
 
 Recovery order:
 

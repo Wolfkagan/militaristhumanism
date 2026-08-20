@@ -1,9 +1,30 @@
-# Release v0.1 Community — Checkpoint
+# Release v0.1 Community — Production Seal
 
-Branch: `codex/community-analytics-v0.1`
+Date: 2026-08-20
 
-Implemented: public community discovery/search, OAuth-ready member accounts, discussions and nested replies, safe Markdown, reactions/bookmarks/follows, profiles and notifications, reports and moderation, owner analytics, category/role controls, audit history, retention, sitemap/robots integration, Cloudflare bindings, migrations, responsive UI, security headers, and adversarial tests.
+Status: released to production.
 
-Verified locally at the initial checkpoint: 35/35 Workers-runtime tests, successful TypeScript checks, successful application bundle, zero dependency vulnerabilities, zero static security-pattern findings, and real Chrome responsive/console checks. The release now targets a single Worker plus Static Assets so native rate limiting and comprehensive Workers observability remain available together.
+## Delivered
 
-Production remains on the prior static release. The preview migration is currently stopped by Cloudflare API authorization code `7403`; continue from that exact gate, then complete real OAuth/Turnstile/WAF configuration as documented in `DEPLOYMENT_REPORT.md`.
+The release adds public community discovery and search, Google OAuth member accounts, discussions and nested replies, safe Markdown, reactions, bookmarks, follows, profiles, notifications, reports, moderation, owner analytics, category and role controls, audit history, retention, sitemap/robots integration, responsive UI, and layered abuse protection while preserving the English, Turkish, and German publication.
+
+Authentication intentionally offers Google only in the current production configuration. Apple stays hidden until its complete credential set exists. GitHub is not an authentication provider.
+
+## Verification seal
+
+- source commit deployed: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- pull requests `#4`, `#5`, and `#6`: merged; CI green
+- Workers-runtime tests: 39/39 PASS
+- real Chrome E2E: 2/2 PASS
+- static verifier: 44 required files, 21 HTML IDs, 0 broken links, 0 missing assets; accessibility, SEO, security headers, Worker configuration, and overall validation PASS
+- production D1: migrations current; exactly one verified administrator profile
+- live Google OAuth, Turnstile, administrator routes, and product analytics: PASS
+- external DNSSEC, TLS, canonical redirects, three languages, publication resources, and live security headers: PASS
+- prohibited-name repository scan: zero files
+
+Cloudflare Web Analytics automatic injection is verified, but its dashboard still showed no aggregated visits at the capture time. Numeric Lighthouse/Core Web Vitals scores remain `NOT_MEASURED` because the tracing connector was unavailable; no synthetic score is reported.
+
+## Recovery
+
+Rollback anchors are the retained Cloudflare Worker versions and the deployed Git commit above. D1 recovery uses the privately captured Time Travel bookmark. A destructive restore was not run against production.

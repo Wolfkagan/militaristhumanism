@@ -1,12 +1,22 @@
 # Community Architecture
 
-Status: implementation complete on `codex/community-analytics-v0.1`; production remains unchanged.
+Status: production release active on `https://militaristhumanism.com`.
+
+Date: 2026-08-20
 
 ## Request path
 
-A single Cloudflare Worker deploys the static publication and application as one versioned unit. Cloudflare Static Assets serves files from `public/` without invoking application code when an asset matches; unmatched community, account, API, and administration paths enter the Hono Worker at `src/worker.ts`. The Worker uses D1 for relational state, Better Auth for server-managed OAuth sessions, Cloudflare Turnstile for high-risk public entry points, Workers Rate Limiting for abuse control, and Analytics Engine plus D1 rollups for privacy-preserving product telemetry.
+A single Cloudflare Worker deploys the English, Turkish, and German publication together with the community application as one versioned unit. Cloudflare Static Assets serves matching files from `public/`; unmatched community, account, API, and administration requests enter the Hono Worker at `src/worker.ts`.
 
-This replaces the conflicting dual Pages/Workers build interpretation while preserving the existing zone and current Pages production deployment until preview acceptance is complete. Preview and production use distinct Worker environments, D1 databases, Analytics Engine datasets, rate-limit namespaces, hosts, and secrets.
+The Worker uses:
+
+- D1 for accounts, discussions, replies, reactions, bookmarks, follows, reports, moderation, notifications, audit history, and bounded analytics rollups.
+- Better Auth for server-managed Google OAuth sessions. Password authentication is disabled. Apple is shown only when its complete configuration exists; GitHub is not an authentication provider.
+- Turnstile for OAuth initiation and selected high-risk writes, with server-side hostname, action, and token verification.
+- five Cloudflare Workers Rate Limiting bindings for authentication, writes, search, reactions, and reports.
+- Analytics Engine for write-only product event points and D1 for administrator-readable aggregate reports.
+
+Preview and production use separate Worker environments, D1 databases, Analytics Engine datasets, rate-limit namespaces, hosts, and secrets.
 
 ## Trust boundaries
 
@@ -14,9 +24,16 @@ This replaces the conflicting dual Pages/Workers build interpretation while pres
 - Authenticated members may mutate only their own content and private account records.
 - Moderators may review reports and perform bounded, reasoned moderation.
 - Administrators alone may view owner analytics, change roles/categories, and operate emergency read-only mode.
-- Authorization, CSRF, validation, rate limiting, Turnstile, and ownership checks are enforced in the Function; the browser is never trusted as the policy authority.
+- Authorization, CSRF, validation, rate limiting, Turnstile, and ownership checks are enforced in the Worker; the browser is never the policy authority.
 - Production and internet-accessible preview environments reject deterministic test identity headers.
+- `/admin/*` pages enforce server-side roles and return `noindex, nofollow` metadata.
 
 ## Data minimization
 
-No message bodies, tokens, raw IP addresses, or browser fingerprints enter product analytics. Anonymous abuse keys are transient HMAC-derived values. Public IDs are separate from internal numeric database IDs.
+Product analytics excludes message bodies, tokens, cookie values, raw IP addresses, email addresses, and browser fingerprints. Anonymous abuse keys are transient HMAC-derived values. Public identifiers are separate from internal numeric database identifiers.
+
+## Deployment identity
+
+- Production source commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- Active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- Accepted isolated preview version: `31cfa9a1-0669-4e58-bee5-e15e193e20a5`
