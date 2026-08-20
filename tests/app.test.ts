@@ -41,6 +41,21 @@ describe("public application boundaries", () => {
     expect(body.toLocaleLowerCase("en-US")).not.toContain("github");
   });
 
+  it("preserves the OAuth state cookie on the Google authorization redirect", async () => {
+    const response = await request("/community/sign-in", {
+      method: "POST",
+      headers: {
+        accept: "text/html",
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        origin: "https://militaristhumanism.com",
+      },
+      body: new URLSearchParams({ provider: "google", returnTo: "/community", turnstileToken: "test-token" }),
+    });
+    expect(response.status).toBe(303);
+    expect(new URL(response.headers.get("location") ?? "").hostname).toBe("accounts.google.com");
+    expect(response.headers.get("set-cookie")).toContain("better-auth.state");
+  });
+
   it("blocks anonymous writes with a consistent JSON error", async () => {
     const response = await request("/api/community/threads", {
       method: "POST",

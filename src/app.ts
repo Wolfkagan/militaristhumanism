@@ -256,12 +256,19 @@ app.post("/community/sign-in", async (c) => {
   if (origin !== new URL(c.req.url).origin) throw new AppError(403, "ORIGIN_REJECTED", "The request origin could not be verified.");
   await enforceRateLimit(c.env.AUTH_RATE_LIMITER, await actorRateKey(c.req.raw, null, c.env.AUTH_SECRET));
   await validateTurnstile(c.req.raw, c.env, input.turnstileToken, "oauth_start");
-  const result = await createAuth(c.env).api.signInSocial({
+  const authResult = await createAuth(c.env).api.signInSocial({
     body: { provider: input.provider, callbackURL: safeReturnPath(input.returnTo, "/community") },
     headers: c.req.raw.headers,
+    returnHeaders: true,
   });
+  const result = authResult.response;
   if (!result.redirect || result.url === undefined) throw new AppError(502, "OAUTH_START_FAILED", "Sign-in could not be started.");
-  return c.redirect(result.url, 303);
+  const response = c.redirect(result.url, 303);
+  const stateCookie = authResult.headers?.get("set-cookie");
+  if (stateCookie !== null && stateCookie !== undefined) {
+    response.headers.append("set-cookie", stateCookie);
+  }
+  return response;
 });
 
 app.get("/community/new", async (c) => {
