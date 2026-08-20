@@ -12,9 +12,10 @@ Authentication intentionally offers Google only in the current production config
 
 ## Verification seal
 
-- source commit deployed: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
-- active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
-- pull requests `#4`, `#5`, and `#6`: merged; CI green
+- last application-code commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- last code-bearing manual Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- pull requests `#4`, `#5`, `#6`, and `#7`: merged; CI green
+- PR `#7` documentation-only Cloudflare main build: successful; application files unchanged
 - Workers-runtime tests: 39/39 PASS
 - real Chrome E2E: 2/2 PASS
 - static verifier: 44 required files, 21 HTML IDs, 0 broken links, 0 missing assets; accessibility, SEO, security headers, Worker configuration, and overall validation PASS
