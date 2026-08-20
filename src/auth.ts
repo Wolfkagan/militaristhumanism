@@ -31,7 +31,10 @@ export function authIsConfigured(env: Env): boolean {
 }
 
 function trustedOrigins(env: Env, allowedHosts: string[]): string[] {
-  const origins = new Set<string>(["https://appleid.apple.com"]);
+  const origins = new Set<string>();
+  if (configuredProviders(env).includes("apple")) {
+    origins.add("https://appleid.apple.com");
+  }
   for (const candidate of [env.CANONICAL_ORIGIN, env.AUTH_BASE_FALLBACK]) {
     try {
       origins.add(new URL(candidate).origin);
