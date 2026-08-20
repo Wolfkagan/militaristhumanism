@@ -126,6 +126,22 @@ function isPrivatePath(pathname: string): boolean {
   );
 }
 
+function oauthFormAction(env: Env): string {
+  const origins = ["'self'"];
+  if (env.GOOGLE_CLIENT_ID?.trim() && env.GOOGLE_CLIENT_SECRET?.trim()) {
+    origins.push("https://accounts.google.com");
+  }
+  if (
+    env.APPLE_CLIENT_ID?.trim() &&
+    env.APPLE_TEAM_ID?.trim() &&
+    env.APPLE_KEY_ID?.trim() &&
+    env.APPLE_PRIVATE_KEY?.trim()
+  ) {
+    origins.push("https://appleid.apple.com");
+  }
+  return origins.join(" ");
+}
+
 export const securityHeaders: MiddlewareHandler<AppBindings> = async (c, next) => {
   await next();
   const pathname = new URL(c.req.url).pathname;
@@ -147,7 +163,7 @@ export const securityHeaders: MiddlewareHandler<AppBindings> = async (c, next) =
   }
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js; connect-src 'self'; frame-src https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests",
+    `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action ${oauthFormAction(c.env)}; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js; connect-src 'self'; frame-src https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests`,
   );
   headers.delete("Access-Control-Allow-Origin");
   headers.set("Vary", "Cookie, Accept-Encoding");

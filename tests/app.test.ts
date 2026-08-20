@@ -22,8 +22,11 @@ describe("public application boundaries", () => {
     const body = await response.text();
     expect(response.status).toBe(200);
     expect(body).toContain("<h1>Community</h1>");
-    expect(response.headers.get("content-security-policy")).toContain("object-src 'none'");
-    expect(response.headers.get("content-security-policy")).not.toContain("unsafe-eval");
+    const csp = response.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("form-action 'self' https://accounts.google.com");
+    expect(csp).not.toContain("https://appleid.apple.com");
+    expect(csp).not.toContain("unsafe-eval");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
