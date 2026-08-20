@@ -197,15 +197,16 @@ export function signInPage(
   returnTo: string,
   configured: boolean,
 ): string {
-  const providerButtons = providers.map((provider) => `<button class="button" type="submit" name="provider" value="${esc(provider)}">Continue with ${esc(provider[0]!.toUpperCase() + provider.slice(1))}</button>`).join("");
+  const providerLabels: Record<string, string> = { google: "Google", apple: "Apple" };
+  const providerButtons = providers.map((provider) => `<button class="button provider-${esc(provider)}" type="submit" name="provider" value="${esc(provider)}">Continue with ${esc(providerLabels[provider] ?? provider)}</button>`).join("");
   return layout({
-    title: "Sign in",
-    description: "Sign in securely with an approved OAuth provider.",
+    title: "Create account or sign in",
+    description: "Create an account or sign in securely with Google or Apple.",
     pathname: "/community/sign-in",
     session,
     noindex: true,
     usesTurnstile: siteKey !== undefined,
-    body: `<section class="sign-in-card"><p class="eyebrow">Secure access</p><h1>Join the discussion</h1><p>Reading is public. Publishing requires a verified account and a secure, server-managed session.</p>${configured ? `<form action="/community/sign-in" method="post">${turnstileWidget(siteKey, "oauth_start")}<input type="hidden" name="returnTo" value="${esc(returnTo)}"><div class="provider-list">${providerButtons}</div></form>` : '<p class="notice">Sign-in providers are not configured in this environment.</p>'}<p class="fine-print">By continuing, you agree to the community rules and privacy terms.</p></section>`,
+    body: `<section class="sign-in-card"><p class="eyebrow">Secure access</p><h1>Create an account or sign in</h1><p>Reading is public. Publishing requires a verified Google or Apple account and a secure, server-managed session.</p>${configured ? `<form action="/community/sign-in" method="post">${turnstileWidget(siteKey, "oauth_start")}<input type="hidden" name="returnTo" value="${esc(returnTo)}"><div class="provider-list">${providerButtons}</div></form>` : '<p class="notice">Sign-in providers are not configured in this environment.</p>'}<p class="fine-print">By continuing, you agree to the community rules and privacy terms.</p></section>`,
   });
 }
 

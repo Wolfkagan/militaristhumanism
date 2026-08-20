@@ -27,6 +27,15 @@ describe("public application boundaries", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
+  it("offers Google account access without a GitHub sign-in path", async () => {
+    const response = await request("/community/sign-in", { headers: { accept: "text/html" } });
+    const body = await response.text();
+    expect(response.status).toBe(200);
+    expect(body).toContain('value="google"');
+    expect(body).toContain("Continue with Google");
+    expect(body.toLocaleLowerCase("en-US")).not.toContain("github");
+  });
+
   it("blocks anonymous writes with a consistent JSON error", async () => {
     const response = await request("/api/community/threads", {
       method: "POST",
@@ -64,7 +73,7 @@ describe("public application boundaries", () => {
     await seedUser("e2e-member");
     await seedUser("e2e-moderator", "moderator");
     await seedUser("e2e-admin", "admin");
-    const token = "workers-runtime-e2e-test-token-with-more-than-thirty-two-characters";
+    const token = testEnv.E2E_TEST_TOKEN;
     const headersFor = (userId: string, accept = "application/json") => ({
       "x-e2e-test-token": token,
       "x-e2e-user-id": userId,

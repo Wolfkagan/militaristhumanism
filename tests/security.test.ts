@@ -5,7 +5,7 @@ import { safeReturnPath } from "../src/http";
 import { reactionSchema, threadCreateSchema } from "../src/validation";
 import { validateTurnstile } from "../src/turnstile";
 import { testEnv } from "./helpers";
-import { readNonProductionTestSession } from "../src/auth";
+import { configuredProviders, readNonProductionTestSession } from "../src/auth";
 import { seedUser } from "./helpers";
 
 describe("security boundaries", () => {
@@ -18,7 +18,7 @@ describe("security boundaries", () => {
   });
 
   it("binds CSRF tokens to one session and an expiry", async () => {
-    const secret = "a-secure-test-secret-that-is-long-enough";
+    const secret = crypto.randomUUID().repeat(2);
     const token = await createCsrfToken("session-a", secret, 1_000_000);
     expect(await verifyCsrfToken(token, "session-a", secret, 1_000_500)).toBe(true);
     expect(await verifyCsrfToken(token, "session-b", secret, 1_000_500)).toBe(false);
@@ -40,11 +40,23 @@ describe("security boundaries", () => {
     await expect(validateTurnstile(request, env, "token", "report_create")).rejects.toMatchObject({ code: "TURNSTILE_UNAVAILABLE" });
   });
 
+  it("enables only complete Google and Apple OAuth configurations", () => {
+    const env = {
+      ...testEnv,
+      APPLE_CLIENT_ID: crypto.randomUUID(),
+      APPLE_TEAM_ID: crypto.randomUUID(),
+      APPLE_KEY_ID: crypto.randomUUID(),
+      APPLE_PRIVATE_KEY: testEnv.AUTH_SECRET,
+    } as Env;
+    expect(configuredProviders(env)).toEqual(["google", "apple"]);
+    expect(configuredProviders({ ...env, APPLE_PRIVATE_KEY: "" } as Env)).toEqual(["google"]);
+  });
+
   it("keeps the deterministic test identity gate disabled in production", async () => {
     await seedUser("test-member");
     const request = new Request("https://militaristhumanism.com/community", {
       headers: {
-        "x-e2e-test-token": "workers-runtime-e2e-test-token-with-more-than-thirty-two-characters",
+        "x-e2e-test-token": testEnv.E2E_TEST_TOKEN,
         "x-e2e-user-id": "test-member",
       },
     });
