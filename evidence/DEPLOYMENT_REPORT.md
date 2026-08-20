@@ -1,41 +1,49 @@
 # Deployment Report
 
-## Preserved production
+Date: 2026-08-20
 
-The existing production deployment and `main` branch were not mutated during this security checkpoint. The community release is isolated on `codex/community-analytics-v0.1`.
+Status: production deployment complete.
 
-## Prepared resources
+## Release result
 
-- Preview D1: `militaristhumanism-community-preview`
-- Production D1: `militaristhumanism-community-prod`
-- Separate preview/production Analytics Engine datasets
-- Separate rate-limit namespaces for authentication, writes, search, reactions, and reports
-- Five forward-only D1 migrations
-- Hono Worker entry point, Cloudflare Static Assets, redirects, and security headers
+The static trilingual publication and the new community, authentication, moderation, and owner-analytics application now run from one Cloudflare Worker plus Static Assets deployment on `https://militaristhumanism.com`.
 
-## Remaining external gates
+- Production source commit: `f6b97b93a55d2da3caa73ccfdd03205bbaa97362`
+- Active production Worker version: `66498b08-9e42-4298-a475-4909bc50991f`
+- Accepted isolated preview version: `31cfa9a1-0669-4e58-bee5-e15e193e20a5`
+- Pull requests merged with green CI: `#4`, `#5`, and `#6`
 
-1. Apply migrations to the preview D1 only.
-2. Configure real preview OAuth and Turnstile secrets/widget.
-3. Push the remediation commit and inspect the isolated Worker preview.
-4. Run authenticated preview acceptance and Cloudflare WAF checks.
-5. Only then schedule production migrations/deployment and rollback verification.
+Production version history retained by Cloudflare also provides immediate rollback targets. The two post-release corrections were narrowly scoped: exact OAuth redirect origins were added to CSP `form-action`, then Better Auth's state cookie was preserved across the custom `303` redirect.
 
-No production database migration or deployment was performed here.
+## Production resources
 
-## Latest preview migration attempt
+- D1: `militaristhumanism-community-prod`
+- five forward-only D1 migrations; remote migration check reports no pending migrations
+- production Analytics Engine dataset
+- five independent Workers Rate Limiting bindings
+- Static Assets plus Hono Worker entry point
+- real Turnstile site configuration and encrypted `TURNSTILE_SECRET`
+- Google OAuth credentials held only in Cloudflare encrypted bindings
+- administrator bootstrap allow-list held in a private Cloudflare environment binding and absent from source/evidence
 
-The preview-only migration command was attempted on 2026-08-16 and Cloudflare rejected the current CLI credential/account combination with API code `7403` (not authorized for that D1 service). No remote migration was applied. Resolve the Cloudflare authorization for account `a040d62b08cafb3bac68761cdd5d73ef`, then rerun `npm run db:migrate:preview` before accepting the Worker preview.
+Apple remains conditional and hidden because it is not fully configured. GitHub is used only for source delivery and PR review; it is not offered or accepted as a sign-in provider. Inactive legacy encrypted OAuth bindings are not referenced by the application runtime.
 
-## Build-pipeline diagnosis
+## Database and recovery evidence
 
-The first branch build exposed two independent legacy-pipeline conflicts rather than application failures:
+- production migrations: `No migrations to apply!`
+- role count after the verified OAuth bootstrap: exactly one `admin` profile
+- a fresh D1 Time Travel bookmark was captured privately; its value is intentionally withheld
+- direct SQL export was attempted without mutation, but Cloudflare D1 rejected full export because the database contains FTS5 virtual tables
+- recovery therefore uses D1 Time Travel plus the retained Worker version history; destructive restore was not exercised against live production
 
-- GitHub's original validator rejected every `package.json`, so it could only validate the former static repository.
-- Cloudflare Pages rejected Workers-only observability configuration, while the separate Workers build rejected the Pages-only configuration because it had no Worker entry point or assets directory.
+## Control-plane security
 
-The remediation makes `src/worker.ts` and `public/` the single deployable unit and upgrades GitHub validation to run the publication checks, TypeScript checks, Workers-runtime suite, preview dry-run, production dry-run, and whole-release SHA-256 manifest verification.
+The Cloudflare zone currently shows the Cloudflare managed ruleset as `Always active`, Bot Fight Mode enabled, JavaScript detections enabled, and Browser Integrity Check enabled. Cloudflare's platform DDoS defense fronts the proxied domain. No extra broad dashboard rate rule was added because the Worker already applies operation-specific limits before protected work, avoiding a duplicate rule that could incorrectly throttle OAuth callbacks.
 
-## Cloudflare control-plane changes
+## Delivery history
 
-On 2026-08-16, Analytics Engine was enabled at account scope after the first Worker upload was correctly rejected with API code `10089`. The legacy Pages project's Git connection was then disconnected so future branch pushes have exactly one deploy authority. Its last verified production deployment and custom domain were preserved; no production traffic was moved by this action.
+1. `0efd0277-8dcc-438a-bce5-fd1260123f08` — initial community production deployment.
+2. `43e9e113-d829-45e8-82b1-604a1fbbad9e` — exact OAuth destinations allowed by CSP.
+3. `66498b08-9e42-4298-a475-4909bc50991f` — OAuth state cookie preserved on redirect; current production.
+
+The earlier preview authorization error `7403` is resolved and is no longer a release gate.

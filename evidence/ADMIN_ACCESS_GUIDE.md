@@ -14,7 +14,7 @@ Apple sağlayıcısı yapılandırılmadığı sürece düğmesi gösterilmez; c
 
 ## İlk admin hesabının oluşması
 
-Üretim D1 kontrolünde henüz kullanıcı profili bulunmadı. Bu nedenle yapılandırılmış yönetici Google hesabının ilk başarılı girişinde profil otomatik oluşturulur ve e-posta eşleşmesi sunucu tarafında `admin` rolünü verir. Eşleşme yalnızca ilk profil oluşturulurken yapılır; istemci, URL veya form alanı rol veremez.
+Yapılandırılmış yönetici Google hesabıyla canlı OAuth girişi tamamlandı. Üretim D1 rol sayımı artık tam olarak bir `admin` profili gösteriyor. E-posta eşleşmesi sunucu tarafındaki özel bootstrap listesiyle yapılır; istemci, URL veya form alanı rol veremez.
 
 ## Yönetim rotaları
 
@@ -40,5 +40,6 @@ Tüm yönetim sayfaları `noindex, nofollow`, sunucu tarafı rol kontrolü, güv
 
 - Google OAuth uygulaması: üretim durumunda.
 - Canlı giriş sayfası: Google açık, koşulsuz Apple/GitHub seçeneği yok.
-- Üretim D1 rol sayımı: sıfır profil; ilk yetkili giriş bootstrap akışını kullanacak.
+- Üretim D1 rol sayımı: tam olarak bir `admin` profili.
 - Yetkisiz `/admin/*` erişimi: sunucu tarafında engelleniyor ve yönetim verisi döndürmüyor.
+- Canlı yönetici kabulü: `/admin` → `/admin/overview`; yedi yönetim rotası ve ürün analitiği görünümü doğrulandı.
