@@ -152,8 +152,8 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Live private cache policy | **FAIL** | deployed baseline lacks candidate's private/no-store behavior on anonymous admin response |
 | Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote branch CI / CodeQL | PASS | evidence-bearing candidate `fa2f140`: Source CI run `33123070374` and CodeQL run `33123070245` completed successfully |
-| Cloudflare Git branch build | PASS | build `b12a529e` for `fa2f140` completed successfully; version upload only, no production traffic deployment |
+| Remote branch CI / CodeQL | PASS | corrected candidate `f5cb65c`: Source CI run `33125060174` and CodeQL run `33125060187` completed successfully, including browser, recovery, dry-run, and manifest gates |
+| Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
 | GitHub pull request | HOLD | three write attempts returned `403 Resource not accessible by integration`; branch is pushed but no PR exists |
 | Dedicated audit secret | **FAIL** | read-only Cloudflare checks confirm `AUDIT_INTEGRITY_SECRET` is absent from both preview and production |
 | Preview hardening migrations | HOLD | preview D1 has 5 applied migrations; `0006`/`0007` and audit-chain initialization are not applied |
