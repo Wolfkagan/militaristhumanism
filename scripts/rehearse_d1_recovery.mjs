@@ -93,7 +93,7 @@ const integrity = restored.prepare("PRAGMA quick_check").get().quick_check;
 if (
   Number(summary.migrations) !== 7 ||
   Number(summary.categories) !== 10 ||
-  Number(summary.users) !== 3 ||
+  Number(summary.users) !== 5 ||
   Number(summary.probe_threads) !== 1 ||
   Number(summary.fts_rows) !== 1 ||
   integrity !== "ok"

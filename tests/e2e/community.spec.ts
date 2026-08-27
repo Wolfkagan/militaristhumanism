@@ -2,8 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 const e2eToken = process.env.E2E_TEST_TOKEN ?? "local-browser-e2e-token-with-more-than-thirty-two-characters";
+type E2eUserId = "e2e-member" | "e2e-member-r1" | "e2e-member-r2" | "e2e-moderator" | "e2e-admin";
 
-async function authenticate(page: Page, userId: "e2e-member" | "e2e-moderator" | "e2e-admin"): Promise<void> {
+async function authenticate(page: Page, userId: E2eUserId): Promise<void> {
   await page.setExtraHTTPHeaders({ "x-e2e-test-token": e2eToken, "x-e2e-user-id": userId });
 }
 
@@ -96,20 +97,26 @@ test("visitor experience is responsive, accessible, and free of browser errors",
   expect(failedAssets).toEqual([]);
 });
 
-test("member, moderator, and admin complete the community workflow", async ({ page }) => {
+test("member, moderator, and admin complete the community workflow", async ({ page }, testInfo) => {
+  const memberIds = ["e2e-member", "e2e-member-r1", "e2e-member-r2"] as const;
+  const memberId = memberIds[testInfo.repeatEachIndex];
+  if (memberId === undefined) {
+    throw new Error("The workflow fixture supports up to three repeat-each runs.");
+  }
   const unique = Date.now().toString(36);
   const title = `E2E discussion ${unique} on accountable strength`;
   const initialReply = `Initial E2E reply ${unique} with a concrete argument.`;
   const editedReply = `Edited E2E reply ${unique} with a stronger concrete argument.`;
   const reportDetails = `E2E report ${unique} for deterministic moderation review.`;
 
-  await authenticate(page, "e2e-member");
+  await authenticate(page, memberId);
   await page.goto("/community/new");
   await page.getByLabel("Title").fill(title);
   await page.getByLabel("Category").selectOption("cat_philosophy");
   await page.getByRole("textbox", { name: "Discussion", exact: true }).fill(`E2E body ${unique}. This is long enough to test a complete authenticated publication workflow.`);
   await page.getByRole("button", { name: "Publish discussion" }).click();
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+  const threadPath = new URL(page.url()).pathname;
 
   await page.locator(".reply-composer textarea").fill(initialReply);
   await page.getByRole("button", { name: "Publish reply" }).click();
@@ -128,7 +135,12 @@ test("member, moderator, and admin complete the community workflow", async ({ pa
   await page.getByRole("link", { name: "Report discussion" }).click();
   await page.getByLabel("Reason").selectOption("other");
   await page.getByLabel("Details").fill(reportDetails);
+  const reportCreated = page.waitForResponse(
+    (response) => response.url().endsWith("/api/community/reports") && response.status() === 201,
+  );
   await page.getByRole("button", { name: "Submit report" }).click();
+  await reportCreated;
+  await page.waitForURL(/\/community\/t\//u);
 
   await authenticate(page, "e2e-moderator");
   await page.goto("/admin/moderation?status=open");
@@ -154,9 +166,12 @@ test("member, moderator, and admin complete the community workflow", async ({ pa
   ]);
   await page.waitForURL(/\/admin\/moderation(?:\?|$)/u);
 
-  await authenticate(page, "e2e-member");
+  await authenticate(page, memberId);
   await page.goto("/notifications");
-  await expect(page.getByText("A moderator hid your discussion.")).toBeVisible();
+  const notification = page.locator(".notification").filter({
+    has: page.locator(`a[href="${threadPath}"]`),
+  });
+  await expect(notification.getByText("A moderator hid your discussion.", { exact: true })).toBeVisible();
 
   await authenticate(page, "e2e-admin");
   await page.goto("/admin/analytics");

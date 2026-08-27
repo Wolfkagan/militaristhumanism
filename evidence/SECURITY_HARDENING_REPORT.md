@@ -111,7 +111,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 
 - The production D1 dashboard confirms Time Travel is active with a seven-day restore window. Current-bookmark retrieval was tested read-only; no bookmark value was recorded.
 - `npm run test:recovery` applies all seven migrations to synthetic data, copies a closed SQLite/FTS5 database into isolation, verifies the matching SHA-256, authoritative row counts, `quick_check`, and FTS rebuildability.
-- Two independent runs produced `RECOVERY_REHEARSAL=PASS`, byte-identical copies, and the same canonical logical snapshot SHA-256 `f0c386c1dffc2b410f5d68897d00a578bf3bb845e52f3782bf2a3d18d984f159`; production mutation was not run.
+- Two independent runs produced `RECOVERY_REHEARSAL=PASS`, byte-identical copies, and the same canonical logical snapshot SHA-256 `5dba01b19e11a5fb959b5d95e553390632871e9beed066abaa09e8ba827d5d82`; production mutation was not run.
 - D1 full export is not treated as a backup when FTS5 virtual tables make it unsupported. Time Travel is primary; a replacement logical database must copy only authoritative ordinary tables and rebuild FTS with `scripts/rebuild_fts.sql`.
 
 ### Supply chain and CI
@@ -120,6 +120,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 - All GitHub Actions references are pinned to full 40-character commit SHAs.
 - Workflow permissions are explicit and read-only except CodeQL's scoped `security-events: write`; checkout credentials are not persisted.
 - CI runs static validation, typecheck, 49 Workers-runtime tests, the isolated recovery rehearsal, 3 real-browser tests, preview/production dry-runs, and the SHA-256 manifest check.
+- The complete browser workflow also passed three consecutive repeat-isolated runs (9/9 total), including per-run rate-limit identities and notification assertions bound to the discussion created by that run.
 - CodeQL uses the current pinned v4 action and `security-extended` JavaScript/TypeScript queries.
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
@@ -131,7 +132,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Baseline manifest | PASS | 86 files; sealed commit/tree/manifest hashes |
 | TypeScript | PASS | Worker plus E2E configs |
 | Workers-runtime tests | PASS | 49/49 across 6 files |
-| Real Chrome | PASS | 3/3; CSP enforcement, accessibility/browser health, full role workflow |
+| Real Chrome | PASS | 3/3 release run and 9/9 three-repeat stress run; CSP enforcement, accessibility/browser health, full role workflow |
 | Static/security verifier | PASS | 58 required files, links, SEO, headers, workflows, secret patterns |
 | Preview dry-run | PASS | Wrangler 4.127.0, 22 assets, no deployment |
 | Production dry-run | PASS | Wrangler 4.127.0, 22 assets, no deployment |
@@ -148,7 +149,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Live private cache policy | **FAIL** | deployed baseline lacks candidate's private/no-store behavior on anonymous admin response |
 | Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote PR CI / CodeQL | HOLD | workflow exists locally but has not run on GitHub |
+| Remote PR CI / CodeQL | HOLD | CodeQL passed on pushed candidate `bd1f16e`; source CI reached Playwright and exposed a navigation race, now fixed and stress-tested locally; replacement run pending |
 | Admin step-up/MFA | HOLD | provider session exposes no reliable MFA/AMR assertion; no false step-up claim was added |
 
 ## Aggregate-only live privacy findings
@@ -181,7 +182,7 @@ Before the schema changes, the previous Worker can be restored. After `0006`/`00
 
 - Candidate is not deployed, so the two live P1 failures remain real.
 - The dedicated audit secret is not yet proven configured in both Cloudflare environments.
-- Remote pull-request CI and CodeQL have not executed on this candidate.
+- CodeQL passed on the pushed candidate, but replacement source CI for the locally fixed Playwright race has not completed. Pull-request creation is unavailable to the current read-only GitHub integration, so push-triggered branch workflows are used for remote evidence.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD.
 - The legacy generated-host redirect cannot be confirmed from the current network path.
 

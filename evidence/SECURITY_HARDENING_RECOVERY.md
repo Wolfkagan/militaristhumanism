@@ -21,7 +21,7 @@ The default script creates two unique local SQLite files under `.tmp/` using Nod
 
 - all seven migrations;
 - ten canonical categories;
-- three synthetic users and one synthetic discussion;
+- five synthetic users (including repeat-isolated browser fixtures) and one synthetic discussion;
 - SQLite `quick_check = ok`;
 - the FTS5 row derived from the recovered discussion;
 - a byte-identical source/restored file copy and a reproducible SHA-256 over the canonical logical schema/data snapshot.
@@ -34,7 +34,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/rehearse_d1_recovery.ps1
 
 The Workers test runtime independently applies these migrations to Cloudflare's D1 implementation. The Node path is used for the file-copy recovery rehearsal because Wrangler's Windows local executor currently fails on otherwise valid multi-statement migration files; individual statements and D1 runtime tests succeed.
 
-Latest isolated result (2026-08-28): two independent runs produced `RECOVERY_REHEARSAL=PASS`, seven migrations, byte-identical copies, authoritative rows, FTS5, and `quick_check`. Both canonical logical snapshots produced SHA-256 `f0c386c1dffc2b410f5d68897d00a578bf3bb845e52f3782bf2a3d18d984f159`. Production mutation: not run.
+Latest isolated result (2026-08-28): two independent runs produced `RECOVERY_REHEARSAL=PASS`, seven migrations, byte-identical copies, authoritative rows, FTS5, and `quick_check`. Both canonical logical snapshots produced SHA-256 `5dba01b19e11a5fb959b5d95e553390632871e9beed066abaa09e8ba827d5d82`. Production mutation: not run.
 
 ## Production migration and rollback sequence
 
