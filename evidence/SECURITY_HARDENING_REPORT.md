@@ -8,7 +8,7 @@ Overall release decision: **HOLD — no production mutation, merge, or deploymen
 
 ## Executive conclusion
 
-The established application and Cloudflare controls remain substantial and the hardening candidate passes all local source, runtime, browser, build, dependency, and recovery gates. It adds encrypted OAuth token storage, a strict response nonce, IP minimization, session revocation, tamper-evident audit events, recovery automation, CodeQL, Dependabot, and stronger CI supply-chain controls.
+The established application and Cloudflare controls remain substantial and the hardening candidate passes all local source, runtime, browser, build, dependency, and recovery gates. The pushed candidate also passes the complete remote branch Source CI and CodeQL workflows. It adds encrypted OAuth token storage, a strict response nonce, IP minimization, session revocation, tamper-evident audit events, recovery automation, CodeQL, Dependabot, and stronger CI supply-chain controls.
 
 Production is intentionally not declared secure at the candidate level yet. Read-only live checks proved that the currently deployed baseline still has one plaintext/non-envelope OAuth access token and one retained ID token, and its CSP does not yet contain the new nonce or Analytics `connect-src`. The managed JavaScript Detections bootstrap is currently delivered without a nonce. The candidate therefore must not be described as deployed until the controlled rollout below is completed.
 
@@ -124,6 +124,8 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 - CodeQL uses the current pinned v4 action and `security-extended` JavaScript/TypeScript queries.
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
+- Push-triggered GitHub evidence for candidate `80b34cd` is green: Source CI run `33122663003` passed every step and CodeQL run `33122663064` passed the JavaScript/TypeScript analysis.
+- Cloudflare's existing Git integration observed the candidate branch and queued its non-traffic `wrangler versions upload --env production` build. No manual production deployment or traffic change was initiated.
 
 ## Verification results
 
@@ -149,7 +151,10 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Live private cache policy | **FAIL** | deployed baseline lacks candidate's private/no-store behavior on anonymous admin response |
 | Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote PR CI / CodeQL | HOLD | CodeQL passed on pushed candidate `bd1f16e`; source CI reached Playwright and exposed a navigation race, now fixed and stress-tested locally; replacement run pending |
+| Remote branch CI / CodeQL | PASS | candidate `80b34cd`: Source CI run `33122663003` and CodeQL run `33122663064` completed successfully |
+| GitHub pull request | HOLD | two write attempts returned `403 Resource not accessible by integration`; branch is pushed but no PR exists |
+| Dedicated audit secret | **FAIL** | read-only Cloudflare checks confirm `AUDIT_INTEGRITY_SECRET` is absent from both preview and production |
+| Preview hardening migrations | HOLD | preview D1 has 5 applied migrations; `0006`/`0007` and audit-chain initialization are not applied |
 | Admin step-up/MFA | HOLD | provider session exposes no reliable MFA/AMR assertion; no false step-up claim was added |
 
 ## Aggregate-only live privacy findings
@@ -181,8 +186,8 @@ Before the schema changes, the previous Worker can be restored. After `0006`/`00
 ## Release blockers
 
 - Candidate is not deployed, so the two live P1 failures remain real.
-- The dedicated audit secret is not yet proven configured in both Cloudflare environments.
-- CodeQL passed on the pushed candidate, but replacement source CI for the locally fixed Playwright race has not completed. Pull-request creation is unavailable to the current read-only GitHub integration, so push-triggered branch workflows are used for remote evidence.
+- The dedicated audit secret is confirmed absent from both Cloudflare environments. The candidate intentionally fails closed without it.
+- Source CI and CodeQL are green on the pushed candidate, but pull-request creation remains unavailable to the current read-only GitHub integration. The branch is therefore not merged.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD.
 - The legacy generated-host redirect cannot be confirmed from the current network path.
 
