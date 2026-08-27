@@ -125,7 +125,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
 - Push-triggered GitHub evidence for candidate `80b34cd` is green: Source CI run `33122663003` passed every step and CodeQL run `33122663064` passed the JavaScript/TypeScript analysis.
-- Cloudflare's existing Git integration observed the candidate branch and queued its non-traffic `wrangler versions upload --env production` build. No manual production deployment or traffic change was initiated.
+- Cloudflare's existing Git integration completed build `b12a529e` for candidate `fa2f140`. Its locked install found zero vulnerabilities and `wrangler versions upload --env production` succeeded, uploading a non-traffic Worker version. No manual production deployment or traffic change was initiated. The long initialization delay coincided with Cloudflare's official Workers Builds degraded-performance incident.
 
 ## Verification results
 
@@ -151,7 +151,8 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Live private cache policy | **FAIL** | deployed baseline lacks candidate's private/no-store behavior on anonymous admin response |
 | Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote branch CI / CodeQL | PASS | candidate `80b34cd`: Source CI run `33122663003` and CodeQL run `33122663064` completed successfully |
+| Remote branch CI / CodeQL | PASS | evidence-bearing candidate `fa2f140`: Source CI run `33123070374` and CodeQL run `33123070245` completed successfully |
+| Cloudflare Git branch build | PASS | build `b12a529e` for `fa2f140` completed successfully; version upload only, no production traffic deployment |
 | GitHub pull request | HOLD | two write attempts returned `403 Resource not accessible by integration`; branch is pushed but no PR exists |
 | Dedicated audit secret | **FAIL** | read-only Cloudflare checks confirm `AUDIT_INTEGRITY_SECRET` is absent from both preview and production |
 | Preview hardening migrations | HOLD | preview D1 has 5 applied migrations; `0006`/`0007` and audit-chain initialization are not applied |
