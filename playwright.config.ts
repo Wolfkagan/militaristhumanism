@@ -17,6 +17,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev:e2e",
+    // Health probes D1 without depending on migrated authentication tables.
     url: "http://127.0.0.1:8789/api/health",
     reuseExistingServer: false,
     timeout: 120_000,

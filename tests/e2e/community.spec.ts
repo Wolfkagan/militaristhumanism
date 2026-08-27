@@ -147,24 +147,24 @@ test("member, moderator, and admin complete the community workflow", async ({ pa
   const report = page.locator(".report-card", { hasText: reportDetails });
   await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/api/admin/reports/review") && response.status() === 200),
+    page.waitForURL((url) => url.pathname === "/admin/moderation" && url.search === "?status=reviewing"),
     report.getByRole("button", { name: "Begin review" }).click(),
   ]);
-  await page.waitForURL(/\/admin\/moderation\?status=reviewing$/u);
   const reviewingReport = page.locator(".report-card", { hasText: reportDetails });
   await reviewingReport.getByLabel("Target-action reason").fill("E2E target action with a reviewable reason.");
   await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/api/admin/moderation") && response.status() === 200),
+    page.waitForURL((url) => url.pathname === "/admin/moderation" && url.search === ""),
     reviewingReport.getByRole("button", { name: "Hide target" }).click(),
   ]);
-  await page.waitForURL(/\/admin\/moderation(?:\?|$)/u);
   await page.goto("/admin/moderation?status=reviewing");
   const stillReviewing = page.locator(".report-card", { hasText: reportDetails });
   await stillReviewing.getByLabel("Resolution reason").fill("E2E report resolved after a complete review.");
   await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/api/admin/moderation") && response.status() === 200),
+    page.waitForURL((url) => url.pathname === "/admin/moderation" && url.search === ""),
     stillReviewing.getByRole("button", { name: "Resolve" }).click(),
   ]);
-  await page.waitForURL(/\/admin\/moderation(?:\?|$)/u);
 
   await authenticate(page, memberId);
   await page.goto("/notifications");

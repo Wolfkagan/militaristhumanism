@@ -15,10 +15,29 @@ function jwtSegment(value: Record<string, unknown>): string {
 }
 
 describe("public application boundaries", () => {
-  it("keeps health output minimal", async () => {
-    const response = await request("/api/health");
+  it("keeps health output minimal and independent of authentication tables", async () => {
+    const statements: string[] = [];
+    const isolatedEnv = {
+      ...testEnv,
+      DB: {
+        prepare: (query: string) => {
+          statements.push(query);
+          return { first: async () => ({ healthy: 1 }) } as unknown as D1PreparedStatement;
+        },
+      } as unknown as D1Database,
+    } as Env;
+    const ctx = createExecutionContext();
+    const response = await app.fetch(new Request("https://militaristhumanism.com/api/health", {
+      headers: {
+        cookie: "better-auth.session_token=untrusted-health-probe",
+        "x-e2e-test-token": testEnv.E2E_TEST_TOKEN,
+        "x-e2e-user-id": "missing-health-user",
+      },
+    }), isolatedEnv, ctx);
+    await waitOnExecutionContext(ctx);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
+    expect(statements).toEqual(["SELECT 1 AS healthy"]);
   });
 
   it("serves the canonical static publication without depending on D1", async () => {

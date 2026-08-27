@@ -120,7 +120,8 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 - All GitHub Actions references are pinned to full 40-character commit SHAs.
 - Workflow permissions are explicit and read-only except CodeQL's scoped `security-events: write`; checkout credentials are not persisted.
 - CI runs static validation, typecheck, 49 Workers-runtime tests, the isolated recovery rehearsal, 3 real-browser tests, preview/production dry-runs, and the SHA-256 manifest check.
-- The complete browser workflow also passed three consecutive repeat-isolated runs (9/9 total), including per-run rate-limit identities and notification assertions bound to the discussion created by that run.
+- The final browser suite passed three consecutive fresh-server stress packages (27/27 browser cases, including nine complete role workflows). Each server uses a unique short OS-temporary Wrangler `--persist-to` directory whose pointer is boundary-validated before D1 setup, so database and native rate-limit state cannot leak across runs.
+- Admin form checks atomically wait for the expected API response and exact navigation target. This closes both overlapping-navigation races exposed by remote CI without weakening production rate limits or adding test-only production bypasses.
 - CodeQL uses the current pinned v4 action and `security-extended` JavaScript/TypeScript queries.
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
@@ -134,7 +135,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Baseline manifest | PASS | 86 files; sealed commit/tree/manifest hashes |
 | TypeScript | PASS | Worker plus E2E configs |
 | Workers-runtime tests | PASS | 49/49 across 6 files |
-| Real Chrome | PASS | 3/3 release run and 9/9 three-repeat stress run; CSP enforcement, accessibility/browser health, full role workflow |
+| Real Chrome | PASS | 3/3 release run and 27/27 across three consecutive fresh-server stress packages; CSP enforcement, accessibility/browser health, full role workflow |
 | Static/security verifier | PASS | 58 required files, links, SEO, headers, workflows, secret patterns |
 | Preview dry-run | PASS | Wrangler 4.127.0, 22 assets, no deployment |
 | Production dry-run | PASS | Wrangler 4.127.0, 22 assets, no deployment |
@@ -153,7 +154,7 @@ No credential, token value, IP value, D1 bookmark, account email, or private ide
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
 | Remote branch CI / CodeQL | PASS | evidence-bearing candidate `fa2f140`: Source CI run `33123070374` and CodeQL run `33123070245` completed successfully |
 | Cloudflare Git branch build | PASS | build `b12a529e` for `fa2f140` completed successfully; version upload only, no production traffic deployment |
-| GitHub pull request | HOLD | two write attempts returned `403 Resource not accessible by integration`; branch is pushed but no PR exists |
+| GitHub pull request | HOLD | three write attempts returned `403 Resource not accessible by integration`; branch is pushed but no PR exists |
 | Dedicated audit secret | **FAIL** | read-only Cloudflare checks confirm `AUDIT_INTEGRITY_SECRET` is absent from both preview and production |
 | Preview hardening migrations | HOLD | preview D1 has 5 applied migrations; `0006`/`0007` and audit-chain initialization are not applied |
 | Admin step-up/MFA | HOLD | provider session exposes no reliable MFA/AMR assertion; no false step-up claim was added |

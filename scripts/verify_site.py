@@ -484,6 +484,12 @@ def main() -> int:
     add(errors, "run: npm ci" in site_ci, "CI must install only the locked npm dependency graph")
     add(errors, "npm run test:recovery" in site_ci, "CI must rehearse isolated D1 recovery and the FTS rebuild")
     add(errors, "npm run test:e2e" in site_ci, "CI must enforce the browser CSP and product workflow tests")
+    e2e_server = (ROOT / "scripts" / "start_e2e_server.mjs").read_text(encoding="utf-8")
+    e2e_setup = (ROOT / "tests" / "e2e" / "global-setup.mjs").read_text(encoding="utf-8")
+    add(errors, '"--persist-to"' in e2e_server, "Browser tests must use an explicit isolated Wrangler persistence directory")
+    add(errors, "mkdtemp" in e2e_server and "tmpdir" in e2e_server, "Browser test persistence must use a unique short OS temporary directory")
+    add(errors, "mh-e2e-state-" in e2e_server and "mh-e2e-state-" in e2e_setup, "Browser test persistence path validation is incomplete")
+    add(errors, "persistenceRelative.startsWith(\"..\")" in e2e_setup, "Browser test setup must reject persistence paths outside the OS temporary directory")
 
     stylesheet = (PUBLIC / "styles.css").read_text(encoding="utf-8")
     add(errors, "prefers-reduced-motion: reduce" in stylesheet, "Reduced-motion support is missing")

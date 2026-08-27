@@ -151,6 +151,7 @@ app.use("*", async (c, next) => {
   c.set("startedAt", Date.now());
   const pathname = new URL(c.req.url).pathname;
   if (
+    pathname === "/api/health" ||
     pathname === "/" ||
     pathname === "/tr" ||
     pathname.startsWith("/tr/") ||

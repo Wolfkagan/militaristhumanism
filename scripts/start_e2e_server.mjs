@@ -1,16 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const repositoryRoot = process.cwd();
 const wranglerEntry = join(repositoryRoot, "node_modules", "wrangler", "bin", "wrangler.js");
+const runId = randomUUID().replaceAll("-", "");
 const runPath = join(
   repositoryRoot,
   ".tmp",
-  `e2e-run-${randomUUID().replaceAll("-", "")}`,
+  `e2e-run-${runId}`,
 );
+const persistencePath = await mkdtemp(join(tmpdir(), "mh-e2e-state-"));
 await mkdir(runPath, { recursive: true });
+await writeFile(join(repositoryRoot, ".tmp", "e2e-state-path.txt"), persistencePath, "utf8");
 const wranglerEnvironment = {
   ...process.env,
   WRANGLER_LOG_PATH: join(runPath, "logs"),
@@ -27,6 +31,8 @@ const child = spawn(
     "dev",
     "--port",
     "8789",
+    "--persist-to",
+    persistencePath,
     "--compatibility-date",
     "2026-08-26",
     "--var",

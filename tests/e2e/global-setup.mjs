@@ -1,13 +1,26 @@
 import { readFile, readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 export default async function globalSetup() {
   const repositoryRoot = process.cwd();
+  const pointerPath = join(repositoryRoot, ".tmp", "e2e-state-path.txt");
+  const temporaryRoot = resolve(tmpdir());
+  const persistenceRoot = resolve(
+    (await readFile(pointerPath, "utf8")).trim(),
+  );
+  const persistenceRelative = relative(temporaryRoot, persistenceRoot);
+  if (
+    persistenceRelative === "" ||
+    persistenceRelative.startsWith("..") ||
+    isAbsolute(persistenceRelative) ||
+    !basename(persistenceRoot).startsWith("mh-e2e-state-")
+  ) {
+    throw new Error("The local E2E persistence path is outside the isolated temporary directory.");
+  }
   const databaseDirectory = join(
-    repositoryRoot,
-    ".wrangler",
-    "state",
+    persistenceRoot,
     "v3",
     "d1",
     "miniflare-D1DatabaseObject",
