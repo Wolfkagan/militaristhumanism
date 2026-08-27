@@ -17,10 +17,12 @@ jobs:
   verify:
     name: Verify production source
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -44,6 +46,15 @@ jobs:
 
       - name: Run Workers-runtime security and product tests
         run: npm test
+
+      - name: Rehearse isolated D1 recovery and FTS rebuild
+        run: npm run test:recovery
+
+      - name: Install locked Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser-enforced CSP and product workflows
+        run: npm run test:e2e
 
       - name: Build preview Worker without deploying
         run: npm run build:worker:preview

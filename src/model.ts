@@ -31,6 +31,7 @@ export interface AppVariables {
   startedAt: number;
   session: AppSession | null;
   csrfToken: string | null;
+  cspNonce: string;
 }
 
 export type AppBindings = {

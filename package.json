@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --port 8788 --var APP_ENV:development --var AUTH_ALLOWED_HOSTS:0.0.0.0,127.0.0.1,localhost --var AUTH_BASE_FALLBACK:http://0.0.0.0:8788",
-    "dev:e2e": "wrangler dev --port 8789 --var APP_ENV:test --var TURNSTILE_MODE:disabled --var AUTH_ALLOWED_HOSTS:0.0.0.0,127.0.0.1,localhost --var AUTH_BASE_FALLBACK:http://127.0.0.1:8789",
+    "dev:e2e": "node scripts/start_e2e_server.mjs",
     "build:worker": "wrangler deploy --dry-run --outdir .wrangler-worker-check",
     "build:worker:preview": "wrangler deploy --dry-run --env preview --outdir .wrangler-worker-preview-check",
     "build:worker:production": "wrangler deploy --dry-run --env production --outdir .wrangler-worker-production-check",
@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:recovery": "pwsh -NoLogo -NoProfile -File ./scripts/rehearse_d1_recovery.ps1",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:preview": "wrangler d1 migrations apply DB --env preview --remote",
     "db:migrate:production": "wrangler d1 migrations apply DB --env production --remote"
@@ -28,7 +29,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@cloudflare/vitest-pool-workers": "^0.21.3",
-    "@cloudflare/workers-types": "^5.20260816.1",
+    "@cloudflare/workers-types": "^5.20260827.1",
     "@playwright/test": "^1.62.1",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^26.2.0",
@@ -36,10 +37,11 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.10",
-    "wrangler": "^4.123.0"
+    "wrangler": "^4.127.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
-    "workerd@1.20260811.1": true
+    "workerd@1.20260811.1": true,
+    "workerd@1.20260826.1": true
   }
 }

@@ -2,9 +2,9 @@
 
 Production source for [militaristhumanism.com](https://militaristhumanism.com/): a trilingual philosophical publication plus a Cloudflare-native community and owner analytics system.
 
-Production status (2026-08-20): community, Google sign-in, moderation, administrator analytics, Turnstile, D1, and the hardened Cloudflare Worker are live. Apple remains conditional; GitHub is not a sign-in provider.
+Production baseline status (2026-08-28): community, Google sign-in, moderation, administrator analytics, Turnstile, D1, and the Cloudflare Worker are live. Apple remains conditional; GitHub is not a sign-in provider. The security-hardening candidate in this branch is not production evidence until every gate in `evidence/SECURITY_HARDENING_REPORT.md` is green.
 
-The existing English, Turkish, and German publication stays static and lightweight. Cloudflare Static Assets serves those files directly; unmatched community, account, API, and administration requests enter the Worker.
+The existing English, Turkish, and German publication stays static and lightweight. Canonical HTML routes pass through the Worker without querying D1 so each response receives a cryptographic CSP nonce; immutable assets are served directly. Community, account, API, and administration requests enter the application Worker.
 
 ## Architecture
 
@@ -51,12 +51,14 @@ Useful checks:
 ```powershell
 npm run typecheck
 npm test
+npm run test:e2e
+npm run test:recovery
 npm run build:worker:preview
 npm run build:worker:production
 python scripts/verify_site.py
 ```
 
-The Workers-runtime tests use isolated D1 storage. They cover migrations, foreign keys, FTS, cursor pagination, locking, deletion semantics, reactions, bookmarks, nested replies, notifications, authorization, report/moderation audit behavior, Markdown/XSS controls, CSRF, input bounds, anonymous-write rejection, admin isolation, SQL-injection resistance, health output, CSP, and rate-limit 429 behavior.
+The Workers-runtime tests use isolated D1 storage. They cover migrations, foreign keys, FTS, cursor pagination, locking, deletion semantics, reactions, bookmarks, nested replies, notifications, authorization, tamper-evident audit behavior, OAuth token encryption, IP privacy, session revocation, Markdown/XSS controls, CSRF, input bounds, anonymous-write rejection, admin isolation, SQL-injection resistance, health output, CSP, and rate-limit 429 behavior. Playwright additionally enforces nonce behavior and the complete member/moderator/admin workflow in a real browser.
 
 ## Bindings and secrets
 
@@ -73,6 +75,7 @@ Non-secret bindings are declared in `wrangler.jsonc` and typed by the generated 
 Secrets must be configured in Cloudflare, never committed:
 
 - `AUTH_SECRET` — at least 32 random characters;
+- `AUDIT_INTEGRITY_SECRET` — a separate stable value of at least 32 random characters; do not rotate it with `AUTH_SECRET`;
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`;
 - `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` when Apple is enabled;
 - `TURNSTILE_SECRET`.
@@ -92,7 +95,7 @@ Use only providers whose complete client ID and secret are configured. The appli
 
 ## Authentication and authorization
 
-Public visitors can read. Better Auth stores server-managed sessions in D1 and issues `HttpOnly`, `Secure`, `SameSite=Lax` cookies in preview/production. Email/password authentication is disabled; no password database is implemented.
+Public visitors can read. Better Auth stores server-managed sessions in D1 and issues `HttpOnly`, `Secure`, `SameSite=Lax` cookies in preview/production. OAuth access and refresh tokens are encrypted at rest; ID tokens are not retained. Email/password authentication is disabled; no password database is implemented.
 
 Roles are enforced on the server:
 
@@ -102,13 +105,15 @@ Roles are enforced on the server:
 
 The first admin is promoted only when an authenticated email matches `ADMIN_BOOTSTRAP_EMAILS`. No owner identity is hardcoded. Moderators cannot act on moderators/admins, and no admin can be demoted through the role-management endpoint.
 
+A member can revoke every own session. An administrator can revoke sessions for a non-admin account only with a recorded reason; moderators, self-targeting through the admin endpoint, and administrator targets are rejected server-side.
+
 ## Turnstile and abuse controls
 
 Turnstile is validated server-side against Siteverify. It protects OAuth initiation, a member’s first discussion, first reply, and reports. Production fails closed when the secret is missing. Cloudflare’s official test keys may be used only in local/preview environments.
 
 Rate limits use authenticated user IDs; anonymous keys are derived from a transient IP through HMAC and the raw address is not stored. Separate policies exist for authentication, writes, search, reactions, and reports. Rejections return `429` and `Retry-After: 60` and create only aggregate telemetry.
 
-Additional defenses include bounded streaming request bodies, Zod validation, prepared D1 statements, exact-origin and session-bound CSRF checks, immutable public IDs, duplicate-post checks, unique relationship constraints, safe Markdown without raw HTML, a strict CSP, no permissive CORS, and server-side ownership/role checks.
+Additional defenses include bounded streaming request bodies, Zod validation, prepared D1 statements, exact-origin and session-bound CSRF checks, immutable public IDs, duplicate-post checks, unique relationship constraints, safe Markdown without raw HTML, a response-unique CSP nonce with no `unsafe-inline`/`unsafe-eval`, no permissive CORS, private/no-store caching for authenticated or CSRF-bearing responses, and server-side ownership/role checks.
 
 ## Analytics and privacy
 
@@ -117,13 +122,13 @@ Two layers remain distinct:
 1. Cloudflare Web Analytics measures aggregate site traffic and performance through the existing zone integration. Do not add a duplicate beacon.
 2. Analytics Engine plus D1 hourly rollups measure enumerated community/product events.
 
-Product analytics never includes message bodies, cookies, authorization headers, secrets, raw IP addresses, or browser fingerprints. The protected `/admin/analytics` view displays only available aggregate product data and links to real top discussions/categories. Traffic values that are unavailable to the application are omitted, not fabricated.
+Product analytics never includes message bodies, cookies, authorization headers, secrets, raw IP addresses, or browser fingerprints. Better Auth IP tracking is disabled and legacy session IP fields are cleared; anonymous abuse keys are short-lived HMAC derivatives. The protected `/admin/analytics` view displays only available aggregate product data and links to real top discussions/categories. Traffic values that are unavailable to the application are omitted, not fabricated.
 
 The public retention explanation is at `/community/privacy`. Notifications are bounded to 180 days and operational rollups to 90 days by default. A guarded cleanup runs when an admin opens the overview. Moderation audit data is retained for accountability.
 
 ## Moderation
 
-Community rules are public at `/community/rules`. Criticism of the philosophy is explicitly permitted. Destructive moderation requires a reason, records a moderation action and audit event, and preserves access-controlled content snapshots when content is hidden.
+Community rules are public at `/community/rules`. Criticism of the philosophy is explicitly permitted. Destructive moderation requires a reason, records a moderation action and audit event, and preserves access-controlled content snapshots when content is hidden. Legacy audit rows are sealed; new events advance an HMAC-SHA-256 chain in the same D1 batch as the privileged mutation. Database triggers reject updates, deletes, and unchained inserts after cutover.
 
 Administrative routes are private and send `X-Robots-Tag: noindex, nofollow`:
 
@@ -150,14 +155,14 @@ Public threads receive canonical metadata and stable `slug + immutable public ID
 Required order:
 
 ```text
-local migration + tests
+local migration + tests + recovery rehearsal
 → branch commit and push
-→ remote preview D1 migration
 → isolated Cloudflare Worker preview
+→ remote preview D1 migration + audit-chain cutover
 → preview E2E/security/accessibility checks
 → production D1 Time Travel bookmark (or export when supported by the schema)
-→ production migration
-→ main deployment
+→ candidate production Worker (migration-compatible)
+→ production migration + audit-chain integrity check
 → external verification
 ```
 
@@ -178,8 +183,10 @@ Recovery order:
 
 1. Set `COMMUNITY_READ_ONLY=true` to keep public reading available while writes fail closed.
 2. Redeploy the last verified Worker production version.
-3. If data repair is required, restore into a replacement D1 database, validate it, then change the binding deliberately; do not overwrite healthy production data blindly.
-4. Add a new forward migration for schema correction.
+3. After migrations `0006`/`0007`, never roll back to a Worker that lacks OAuth encryption and chained-audit support. Keep the reviewed candidate running or deploy a forward hotfix.
+4. Use D1 Time Travel only for confirmed data/schema corruption and only with the secured pre-change bookmark; it overwrites the selected database in place.
+5. For a replacement logical database, copy authoritative non-FTS tables into a freshly migrated D1 database, rebuild FTS with `scripts/rebuild_fts.sql`, validate it, and then change the binding deliberately.
+6. Add a new forward migration for schema correction.
 
 The static landing page remains available when D1/community Functions fail. Public errors are calm and never include stack traces, account/database IDs, or secrets. `/api/health` returns only `{"status":"ok"}`.
 

@@ -1,5 +1,5 @@
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { app } from "../src/app";
 import { seedUser, testEnv } from "./helpers";
 
@@ -10,11 +10,38 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   return response;
 }
 
+function jwtSegment(value: Record<string, unknown>): string {
+  return btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+}
+
 describe("public application boundaries", () => {
   it("keeps health output minimal", async () => {
     const response = await request("/api/health");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
+  });
+
+  it("serves the canonical static publication without depending on D1", async () => {
+    const isolatedEnv = {
+      ...testEnv,
+      DB: {
+        prepare: () => {
+          throw new Error("The static publication must not query D1.");
+        },
+      } as unknown as D1Database,
+      ASSETS: {
+        fetch: async () => new Response("<!doctype html><html><body>Static publication</body></html>", {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=UTF-8" },
+        }),
+      } as unknown as Fetcher,
+    } as Env;
+    const ctx = createExecutionContext();
+    const response = await app.fetch(new Request("https://militaristhumanism.com/"), isolatedEnv, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Static publication");
+    expect(response.headers.get("content-security-policy")).toMatch(/'nonce-[A-Za-z0-9_-]{24}'/u);
   });
 
   it("serves the public community with strict headers", async () => {
@@ -25,9 +52,35 @@ describe("public application boundaries", () => {
     const csp = response.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("form-action 'self' https://accounts.google.com");
+    expect(csp).toContain("connect-src 'self' https://cloudflareinsights.com");
+    expect(csp).toMatch(/script-src[^;]*'nonce-[A-Za-z0-9_-]{24}'/u);
+    const nonce = csp.match(/'nonce-([A-Za-z0-9_-]{24})'/u)?.[1];
+    expect(nonce).toBeTruthy();
+    expect(body).toContain(`nonce="${nonce}"`);
+    expect(csp).not.toContain("unsafe-inline");
     expect(csp).not.toContain("https://appleid.apple.com");
     expect(csp).not.toContain("unsafe-eval");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("cache-control")).toContain("public");
+
+    const second = await request("/community");
+    const secondNonce = second.headers.get("content-security-policy")?.match(/'nonce-([A-Za-z0-9_-]{24})'/u)?.[1];
+    expect(secondNonce).toBeTruthy();
+    expect(secondNonce).not.toBe(nonce);
+  });
+
+  it("marks every authenticated response private even on a public route", async () => {
+    await seedUser("cache-member");
+    const response = await request("/community", {
+      headers: {
+        "x-e2e-test-token": testEnv.E2E_TEST_TOKEN,
+        "x-e2e-user-id": "cache-member",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(response.headers.get("vary")).toContain("Cookie");
   });
 
   it("offers Google account access without a GitHub sign-in path", async () => {
@@ -54,6 +107,77 @@ describe("public application boundaries", () => {
     expect(response.status).toBe(303);
     expect(new URL(response.headers.get("location") ?? "").hostname).toBe("accounts.google.com");
     expect(response.headers.get("set-cookie")).toContain("better-auth.state");
+  });
+
+  it("stores OAuth access and refresh tokens encrypted, drops ID tokens, and records no session IP", async () => {
+    const start = await request("/community/sign-in", {
+      method: "POST",
+      headers: {
+        accept: "text/html",
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        origin: "https://militaristhumanism.com",
+      },
+      body: new URLSearchParams({ provider: "google", returnTo: "/community", turnstileToken: "test-token" }),
+    });
+    const authorization = new URL(start.headers.get("location") ?? "");
+    const state = authorization.searchParams.get("state");
+    const stateCookie = start.headers.get("set-cookie")?.split(";", 1)[0];
+    expect(state).toBeTruthy();
+    expect(stateCookie).toBeTruthy();
+
+    const accessToken = `access-${crypto.randomUUID()}`;
+    const refreshToken = `refresh-${crypto.randomUUID()}`;
+    const idToken = `${jwtSegment({ alg: "none", typ: "JWT" })}.${jwtSegment({
+      sub: `provider-${crypto.randomUUID()}`,
+      name: "OAuth encryption test",
+      email: `oauth-${crypto.randomUUID()}@test.invalid`,
+      email_verified: true,
+    })}.signature`;
+
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL): Promise<Response> => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url !== "https://oauth2.googleapis.com/token") {
+        throw new Error("Unexpected outbound request in OAuth storage regression test.");
+      }
+      return new Response(JSON.stringify({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        id_token: idToken,
+        token_type: "Bearer",
+        expires_in: 3_600,
+        scope: "openid email profile",
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+
+    try {
+      const callback = await request(`/api/auth/callback/google?code=one-time-code&state=${encodeURIComponent(state!)}`, {
+        headers: {
+          cookie: stateCookie!,
+          "x-forwarded-for": "192.0.2.10",
+          "cf-connecting-ip": "192.0.2.10",
+        },
+      });
+      expect(callback.status).toBeGreaterThanOrEqual(300);
+      expect(callback.status).toBeLessThan(400);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const account = await testEnv.DB.prepare(
+      'SELECT "accessToken" AS access_token, "refreshToken" AS refresh_token, "idToken" AS id_token FROM "account" WHERE "providerId" = \'google\'',
+    ).first<{ access_token: string | null; refresh_token: string | null; id_token: string | null }>();
+    expect(account).not.toBeNull();
+    expect(account?.access_token).not.toBe(accessToken);
+    expect(account?.refresh_token).not.toBe(refreshToken);
+    expect(account?.access_token).toMatch(/^(?:\$ba\$\d+\$)?[0-9a-f]+$/iu);
+    expect(account?.refresh_token).toMatch(/^(?:\$ba\$\d+\$)?[0-9a-f]+$/iu);
+    expect(account?.id_token).toBeNull();
+
+    const sessionPrivacy = await testEnv.DB.prepare(
+      'SELECT COUNT(*) AS total, SUM(CASE WHEN "ipAddress" IS NOT NULL THEN 1 ELSE 0 END) AS with_ip FROM "session"',
+    ).first<{ total: number; with_ip: number }>();
+    expect(Number(sessionPrivacy?.total ?? 0)).toBeGreaterThan(0);
+    expect(Number(sessionPrivacy?.with_ip ?? 0)).toBe(0);
   });
 
   it("blocks anonymous writes with a consistent JSON error", async () => {

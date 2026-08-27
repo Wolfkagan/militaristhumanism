@@ -7,6 +7,65 @@ async function authenticate(page: Page, userId: "e2e-member" | "e2e-moderator" |
   await page.setExtraHTTPHeaders({ "x-e2e-test-token": e2eToken, "x-e2e-user-id": userId });
 }
 
+test("the browser enforces the per-response CSP nonce", async ({ page }) => {
+  const rootResponse = await page.goto("/");
+  expect(rootResponse).not.toBeNull();
+  const rootCsp = rootResponse?.headers()["content-security-policy"] ?? "";
+  const rootNonce = rootCsp.match(/'nonce-([A-Za-z0-9_-]{24})'/u)?.[1];
+  expect(rootNonce).toBeTruthy();
+  expect(rootCsp).not.toContain("unsafe-inline");
+
+  const response = await page.goto("/community");
+  expect(response).not.toBeNull();
+  const csp = response?.headers()["content-security-policy"] ?? "";
+  const nonce = csp.match(/'nonce-([A-Za-z0-9_-]{24})'/u)?.[1];
+
+  expect(nonce).toBeTruthy();
+  expect(nonce).not.toBe(rootNonce);
+  expect(csp).toContain("connect-src 'self' https://cloudflareinsights.com");
+  expect(csp).not.toContain("unsafe-inline");
+  expect(csp).not.toContain("unsafe-eval");
+  expect(
+    await page.locator("script").evaluateAll(
+      (scripts, expectedNonce) => scripts.every((script) => script.nonce === expectedNonce),
+      nonce,
+    ),
+  ).toBe(true);
+
+  const result = await page.evaluate(async (approvedNonce) => {
+    const browserWindow = window as typeof window & {
+      __blockedInlineScript?: boolean;
+      __approvedInlineScript?: boolean;
+    };
+    const violations: string[] = [];
+    document.addEventListener(
+      "securitypolicyviolation",
+      (event) => violations.push(event.violatedDirective),
+      { once: true },
+    );
+
+    const blocked = document.createElement("script");
+    blocked.textContent = "window.__blockedInlineScript = true";
+    document.body.append(blocked);
+
+    const approved = document.createElement("script");
+    approved.nonce = approvedNonce ?? "";
+    approved.textContent = "window.__approvedInlineScript = true";
+    document.body.append(approved);
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return {
+      blocked: browserWindow.__blockedInlineScript === true,
+      approved: browserWindow.__approvedInlineScript === true,
+      violations,
+    };
+  }, nonce);
+
+  expect(result.blocked).toBe(false);
+  expect(result.approved).toBe(true);
+  expect(result.violations).toContain("script-src-elem");
+});
+
 test("visitor experience is responsive, accessible, and free of browser errors", async ({ page }) => {
   const errors: string[] = [];
   const failedAssets: string[] = [];

@@ -11,7 +11,7 @@ export default defineConfig({
     cloudflareTest({
       main: "./src/worker.ts",
       miniflare: {
-        compatibilityDate: "2026-08-16",
+        compatibilityDate: "2026-08-18",
         compatibilityFlags: ["nodejs_compat"],
         d1Databases: { DB: "community-test" },
         analyticsEngineDatasets: { ANALYTICS: { dataset: "community_test" } },
@@ -33,6 +33,7 @@ export default defineConfig({
           TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
           ANALYTICS_DATASET: "community_test",
           AUTH_SECRET: ephemeralTestSecret(),
+          AUDIT_INTEGRITY_SECRET: ephemeralTestSecret(),
           GOOGLE_CLIENT_ID: ephemeralTestSecret(),
           GOOGLE_CLIENT_SECRET: ephemeralTestSecret(),
           APPLE_CLIENT_ID: "",

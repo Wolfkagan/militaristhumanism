@@ -100,6 +100,28 @@ export function createAuth(env: Env) {
     trustedOrigins: trustedOrigins(env, allowedHosts),
     socialProviders,
     emailAndPassword: { enabled: false },
+    account: {
+      encryptOAuthTokens: true,
+      updateAccountOnSignIn: true,
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => ({ data: { ...session, ipAddress: null } }),
+        },
+        update: {
+          before: async (session) => ({ data: { ...session, ipAddress: null } }),
+        },
+      },
+      account: {
+        create: {
+          before: async (account) => ({ data: { ...account, idToken: null } }),
+        },
+        update: {
+          before: async (account) => ({ data: { ...account, idToken: null } }),
+        },
+      },
+    },
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,
@@ -108,6 +130,9 @@ export function createAuth(env: Env) {
       useSecureCookies: env.APP_ENV !== "development",
       database: {
         generateId: () => crypto.randomUUID(),
+      },
+      ipAddress: {
+        disableIpTracking: true,
       },
     },
   });
