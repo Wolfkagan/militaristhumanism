@@ -133,6 +133,7 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
 - Pull-request GitHub evidence for sealed candidate `395de0d` is green: Source CI run `33142360219` and CodeQL run `33142360212` completed successfully. GitHub reports six successful checks, no conflicts, and no new CodeQL alert in the changed code.
+- GitHub-hosted production verification run `33143207638` completed successfully against evidence head `a702e32`; it independently passed the canonical content/security checks and the retired `pages.dev` compatibility redirects that time out from the local region.
 - Cloudflare's existing Git integration completed build `b12a529e` for candidate `fa2f140`. Its locked install found zero vulnerabilities and `wrangler versions upload --env production` succeeded, uploading a non-traffic Worker version. No manual production deployment or traffic change was initiated. The long initialization delay coincided with Cloudflare's official Workers Builds degraded-performance incident.
 
 ## Verification results
@@ -159,7 +160,7 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 | Live CSP/JSD/Analytics | PASS | unique response nonce, no unsafe directives, JSD nonce alignment, Analytics script/connect allow-list, and clean real-Chrome console |
 | Live private cache policy | PASS | health, anonymous admin, API, and malicious preflight responses contain both `private` and `no-store`; directive order is treated as insignificant |
 | Production Time Travel availability | PASS | fresh pre-migration bookmark captured without display and stored with CurrentUser DPAPI; no restore performed |
-| Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
+| Legacy `pages.dev` redirect | PASS | local regional route times out, but GitHub-hosted production verification run `33143207638` independently passed the root/path/query compatibility redirects |
 | Remote PR CI / CodeQL | PASS | sealed code head `395de0d`: Source CI run `33142360219` and CodeQL run `33142360212`; six GitHub checks successful and no new CodeQL alert |
 | Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
 | GitHub pull request | PASS | PR #10 is open, mergeable, and green; merge remains deliberately gated only on the live OAuth evidence |
@@ -214,6 +215,5 @@ Before the schema changes, the previous Worker can be restored. After `0006`/`00
 - Until that login completes, the post-migration database correctly contains no provider tokens; the real encrypted-envelope reacquisition gate cannot honestly be marked PASS.
 - PR #10 remains unmerged until that final P1 evidence and the resulting evidence-only CI run pass.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD.
-- The legacy generated-host redirect cannot be confirmed from the current network path.
 
 Accordingly, the only defensible result at this stage is `FINAL_RESULT=HOLD`.
