@@ -4,7 +4,7 @@ Date: 2026-08-28
 Scope: canonical publication, community Worker, authentication, authorization, D1, Cloudflare edge, CI/CD, recovery, and the production-security candidate
 Baseline: `9cede2704f0abea1cf117853c390694992bdf27f`
 Candidate branch: `codex/production-security-hardening`
-Overall release decision: **HOLD — production hardening is deployed; live OAuth reauthorization evidence and PR merge remain pending**
+Overall release decision: **PASS — production hardening is deployed and every mandatory live security gate is complete**
 
 ## Executive conclusion
 
@@ -12,9 +12,9 @@ The established application and Cloudflare controls remain substantial and the h
 
 The sealed candidate is now deployed to production at 100% as Worker version `0361b902-4c82-4af3-9c37-273081d419d8`. A short read-only cutover used version `f4a0def6-91b7-4a06-8792-643b2e7e9fb3`; the prior baseline `3ea38407-2e19-4cbf-a23a-681c391272e1` remains the pre-schema rollback reference only. Production D1 is at seven migrations, the legacy access token, ID token, and session IP were cleared without deleting the account or session, the audit chain is sealed with enforcement active, and live CSP/JSD/Analytics, cache, CORS, health, content, and canonical redirect gates pass.
 
-The remaining P1 evidence is one real Google OAuth reauthorization followed by an aggregate-only proof that the reacquired access token uses the encrypted envelope while the ID token and session IP remain `NULL`. The available browser is not signed in to the application and no OAuth authorization was initiated without action-time approval. PR #10 therefore remains open and the result remains HOLD rather than overstating completion.
+A user-authorized real Google OAuth reauthorization completed on 2026-08-28. The application returned to an authenticated administrator session, and an aggregate-only production D1 query proved that the single reacquired access token matches Better Auth's encrypted envelope while the ID-token and session-IP counts remain zero. PR #10 is therefore release-authorized subject only to its final evidence-only CI run and merge procedure.
 
-No credential, token value, IP value, D1 bookmark, audit key, or private row value was committed to source or evidence. Aggregate queries selected counts only. The controlled production mutations were the two documented migrations and the single audit-chain state initialization; the account and existing application session were preserved.
+No credential, token value, IP value, D1 bookmark, audit key, or private row value was committed to source or evidence. Aggregate queries selected counts only. The controlled hardening cutover mutations were the two documented migrations and the single audit-chain state initialization; the later user-authorized OAuth callback updated the existing account's encrypted provider-token field and created the expected second application session.
 
 ## Chain of custody
 
@@ -156,14 +156,14 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 | Live malicious CORS preflight | PASS | no ACAO |
 | Live HTTP/`www` redirects | PASS | 301 to HTTPS apex with path/query preservation |
 | Legacy OAuth/IP cleanup | PASS | account/session preserved; access, refresh, ID-token, and session-IP counts are all 0 after migration `0006` |
-| Live OAuth encrypted reacquisition | **HOLD** | one real Google reauthorization and aggregate encrypted-envelope proof remain; no provider identity was authorized without action-time approval |
+| Live OAuth encrypted reacquisition | PASS | user-authorized real Google reauthorization; 1/1 access token matches the encrypted envelope, 0 ID tokens, 0 session IPs, and administrator access preserved |
 | Live CSP/JSD/Analytics | PASS | unique response nonce, no unsafe directives, JSD nonce alignment, Analytics script/connect allow-list, and clean real-Chrome console |
 | Live private cache policy | PASS | health, anonymous admin, API, and malicious preflight responses contain both `private` and `no-store`; directive order is treated as insignificant |
 | Production Time Travel availability | PASS | fresh pre-migration bookmark captured without display and stored with CurrentUser DPAPI; no restore performed |
 | Legacy `pages.dev` redirect | PASS | local regional route times out, but GitHub-hosted production verification run `33143207638` independently passed the root/path/query compatibility redirects |
 | Remote PR CI / CodeQL | PASS | sealed code head `395de0d`: Source CI run `33142360219` and CodeQL run `33142360212`; six GitHub checks successful and no new CodeQL alert |
 | Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
-| GitHub pull request | PASS | PR #10 is open, mergeable, and green; merge remains deliberately gated only on the live OAuth evidence |
+| GitHub pull request | PASS | PR #10 supplied the reviewed delivery path; all candidate checks are successful and the branch is conflict-free at release authorization |
 | Preview candidate Worker | PASS | version `28ac0645` is deployed at 100%; the application bundle was unchanged by the later migration-parser-only commit `395de0d`; rollback version is `0142f3ca` |
 | Dedicated audit secrets | PASS | distinct preview and production values are configured and separately DPAPI-backed; neither value was printed or committed |
 | Preview hostname routing | PASS | `community-preview.militaristhumanism.com` was removed only from the production Worker and bound to `militaristhumanism-preview`; production apex was untouched |
@@ -194,7 +194,19 @@ Post-migration aggregate-only verification returned:
 - ID tokens present: 0;
 - sessions with a stored IP value: 0.
 
-These results prove migration `0006` removed the legacy material without revoking the account or application session. A fresh OAuth login is still required to prove, on the live provider path, that a reacquired access token is stored in the encrypted envelope and that the ID token remains absent. No underlying value was selected.
+The user-authorized post-cutover Google OAuth verification then returned:
+
+- active sessions: 2;
+- OAuth accounts: 1;
+- access tokens present: 1;
+- access tokens matching the encrypted envelope: 1;
+- refresh tokens present: 0;
+- refresh tokens matching the encrypted envelope: 0;
+- ID tokens present: 0;
+- sessions with a stored IP value: 0;
+- administrator profiles: 1.
+
+These results prove migration `0006` removed the legacy material without revoking the account or application session, and the real live provider path reacquired only an encrypted access token. The second application session is the expected result of reauthorization; the account count remained one. No token, identity, cookie, IP, or private row value was selected or recorded in evidence.
 
 ## Controlled rollout and rollback
 
@@ -205,15 +217,15 @@ These results prove migration `0006` removed the legacy material without revokin
 5. Complete: production entered the environment-variable read-only maintenance version and a fresh Time Travel bookmark was DPAPI-protected.
 6. Complete: the migration-compatible candidate and production audit secret were deployed before D1 mutation.
 7. Complete: migrations `0006`/`0007`, atomic audit sealing, trigger enforcement, aggregate privacy checks, and all canonical live gates passed; the normal writable candidate was restored at 100%.
-8. Pending: perform one user-authorized Google OAuth reauthentication, prove the encrypted envelope by counts/pattern only, update evidence/manifest, require final CI, then merge PR #10.
+8. Complete: one user-authorized Google OAuth reauthentication proved the encrypted envelope by counts/pattern only; evidence and manifest are updated, with final evidence-only CI required immediately before merging PR #10.
 
 Before the schema changes, the previous Worker can be restored. After `0006`/`0007`, do not roll back to a Worker that lacks token encryption and chained-audit support; keep this candidate or issue a forward hotfix. Use Time Travel only for confirmed data/schema corruption because it overwrites the database in place. The detailed procedure is in `evidence/SECURITY_HARDENING_RECOVERY.md`.
 
-## Release blockers
+## Residual limitations and release disposition
 
-- The available browser is at the production `Continue with Google` button but is not authenticated to the application. OAuth authorization was not initiated without action-time approval.
-- Until that login completes, the post-migration database correctly contains no provider tokens; the real encrypted-envelope reacquisition gate cannot honestly be marked PASS.
-- PR #10 remains unmerged until that final P1 evidence and the resulting evidence-only CI run pass.
-- A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD.
+- No P0 or P1 production release blocker remains. The real Google OAuth path and its at-rest privacy properties are proven in production.
+- PR #10 is merged only after the resulting evidence-only CI run passes; this is the final delivery procedure, not an unresolved product-security finding.
+- A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD and is not misrepresented as implemented.
+- Preview audit initialization remains an explicit HOLD because preview has no real privileged identity or OAuth provider configuration. Production audit enforcement is enabled and independently verified.
 
-Accordingly, the only defensible result at this stage is `FINAL_RESULT=HOLD`.
+Accordingly, the defensible production release result is `FINAL_RESULT=PASS`.

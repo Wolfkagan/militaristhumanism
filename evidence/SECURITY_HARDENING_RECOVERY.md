@@ -38,6 +38,8 @@ Latest isolated result (2026-08-28): two independent runs produced `RECOVERY_REH
 
 Production cutover result (2026-08-28): a fresh pre-migration bookmark was captured without display and stored using Windows CurrentUser DPAPI. Maintenance version `f4a0def6` was deployed before migrations, migrations `0006` and `0007` applied successfully, and audit enforcement was enabled with an atomic zero-legacy-row compare-and-set. Aggregate verification preserved one account and one application session while clearing the legacy OAuth token/ID-token/session-IP fields. Writable version `0361b902` is now active at 100%. The Time Travel bookmark was not consumed.
 
+Post-cutover provider proof (2026-08-28): a user-authorized real Google OAuth reauthorization preserved one account and administrator access, created the expected second application session, and reacquired one access token. Aggregate-only production verification confirmed that 1/1 access token matches the encrypted envelope, no refresh or ID token is stored, and no application session stores an IP value. No credential or underlying private value was selected.
+
 ## Production migration and rollback sequence
 
 1. Confirm the candidate Worker, tests, dry-runs, manifest, and secret scan are green. Configure the stable `AUDIT_INTEGRITY_SECRET` in preview and production without logging its value.
