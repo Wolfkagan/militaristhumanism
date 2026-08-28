@@ -31,12 +31,12 @@ CREATE TRIGGER audit_events_match_chain_head
 BEFORE INSERT ON audit_events
 WHEN NEW.previous_hash IS NOT NULL AND NEW.event_hash IS NOT NULL
 BEGIN
-  SELECT CASE
+  SELECT (CASE
     WHEN (SELECT head_hash FROM audit_chain_state WHERE id = 1) IS NULL
       THEN RAISE(ABORT, 'AUDIT_CHAIN_UNSEALED')
     WHEN NEW.previous_hash != (SELECT head_hash FROM audit_chain_state WHERE id = 1)
       THEN RAISE(ABORT, 'AUDIT_CHAIN_CONFLICT')
-  END;
+  END);
 END;
 
 CREATE TRIGGER audit_events_advance_chain
