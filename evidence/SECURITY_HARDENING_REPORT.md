@@ -138,7 +138,7 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 - The final browser suite passed three consecutive fresh-server stress packages (27/27 browser cases, including nine complete role workflows). Each server uses a unique short OS-temporary Wrangler `--persist-to` directory whose pointer is boundary-validated before D1 setup, so database and native rate-limit state cannot leak across runs.
 - Admin form checks atomically wait for the expected API response and exact navigation target. This closes both overlapping-navigation races exposed by remote CI without weakening production rate limits or adding test-only production bypasses.
 - CodeQL uses the current pinned v4 action and `security-extended` JavaScript/TypeScript queries.
-- Dependabot monitors npm and GitHub Actions weekly.
+- Dependabot version updates monitor npm and GitHub Actions weekly and have produced successful update runs. GitHub currently reports repository-level Dependabot security alerts as disabled, so that separate alerting feature remains an explicit HOLD rather than being presented as verified coverage.
 - Source and Git-history secret scans found zero candidate secret leaks.
 - Pull-request GitHub evidence for sealed candidate `395de0d` is green: Source CI run `33142360219` and CodeQL run `33142360212` completed successfully. A later branch-wide inventory audit proved that successful workflow execution was not sufficient evidence of a zero-alert state: two pre-existing high-severity DOM-navigation alerts remained open on canonical `main`.
 - PR #22 added a client-side same-origin destination guard to both affected scripts, a static-verifier requirement, and Chromium regression coverage for `javascript:`, `data:`, protocol-relative, and backslash escape attempts. PR Source run `33147639570` and CodeQL run `33147639561` succeeded; the Code scanning results gate passed. After merge, main runs `33147846753`, `33147846751`, and `33147846937` succeeded and the branch-filtered CodeQL inventory showed 0 open and 2 closed alerts.
@@ -160,6 +160,8 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 | Recovery rehearsal | PASS | 7 migrations, authoritative rows, FTS, quick check, matching digest |
 | `npm ci` | PASS | 204 packages in locked graph |
 | `npm audit --audit-level=moderate` | PASS | 0 vulnerabilities |
+| Dependabot version updates | PASS | weekly npm and GitHub Actions configuration is present and update workflows have run |
+| Dependabot security alerts | HOLD | GitHub reports the repository feature as disabled; no unresolved-alert coverage is claimed |
 | Secret scan | PASS | current source and Git history: 0 findings |
 | Live apex/community/health | PASS | HTTP 200 |
 | Live anonymous admin | PASS | HTTP 401 |
@@ -239,6 +241,7 @@ Before the schema changes, the previous Worker can be restored. After `0006`/`00
 
 - No P0 or P1 production release blocker remains. The real Google OAuth path and its at-rest privacy properties are proven in production, and the two high-severity client navigation findings discovered during the final audit are closed.
 - PR #10 was merged only after its evidence-only CI passed. PR #22 was merged only after six successful checks; its post-merge main Source, CodeQL, and Production verification runs passed, and the alert inventory independently confirmed zero open findings.
+- Dependabot version updates remain active, but repository-level Dependabot security alerts are disabled. This optional supply-chain signal remains a documented HOLD; `npm audit`, CodeQL, secret scanning, locked installs, and scheduled version-update coverage are independently verified.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD and is not misrepresented as implemented.
 - Preview audit initialization remains an explicit HOLD because preview has no real privileged identity or OAuth provider configuration. Production audit enforcement is enabled and independently verified.
 
