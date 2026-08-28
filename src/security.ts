@@ -113,6 +113,12 @@ export async function enforceRateLimit(binding: RateLimit, key: string): Promise
   }
 }
 
+export function createCspNonce(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return toBase64Url(bytes);
+}
+
 function isPrivatePath(pathname: string): boolean {
   return (
     pathname.startsWith("/admin") ||
@@ -143,6 +149,8 @@ function oauthFormAction(env: Env): string {
 }
 
 export const securityHeaders: MiddlewareHandler<AppBindings> = async (c, next) => {
+  const nonce = createCspNonce();
+  c.set("cspNonce", nonce);
   await next();
   const pathname = new URL(c.req.url).pathname;
   const headers = c.res.headers;
@@ -163,15 +171,28 @@ export const securityHeaders: MiddlewareHandler<AppBindings> = async (c, next) =
   }
   headers.set(
     "Content-Security-Policy",
-    `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action ${oauthFormAction(c.env)}; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js; connect-src 'self'; frame-src https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests`,
+    `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action ${oauthFormAction(c.env)}; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://static.cloudflareinsights.com/beacon.min.js; connect-src 'self' https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests`,
   );
   headers.delete("Access-Control-Allow-Origin");
   headers.set("Vary", "Cookie, Accept-Encoding");
 
-  if (isPrivatePath(pathname)) {
+  const session = c.get("session");
+  const csrfToken = c.get("csrfToken");
+  if (isPrivatePath(pathname) || session !== null && session !== undefined || csrfToken !== null && csrfToken !== undefined) {
     headers.set("X-Robots-Tag", "noindex, nofollow");
     headers.set("Cache-Control", "private, no-store");
   } else if (!headers.has("Cache-Control")) {
     headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  }
+
+  const contentType = headers.get("Content-Type")?.toLocaleLowerCase("en-US") ?? "";
+  if (contentType.startsWith("text/html")) {
+    c.res = new HTMLRewriter()
+      .on("script", {
+        element(element) {
+          element.setAttribute("nonce", nonce);
+        },
+      })
+      .transform(c.res);
   }
 };

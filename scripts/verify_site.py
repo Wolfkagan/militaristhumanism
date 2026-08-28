@@ -40,23 +40,37 @@ REQUIRED_FILES = (
     "scripts/verify_site.py",
     "scripts/generate_manifest.py",
     "scripts/verify_deployment.ps1",
+    "scripts/rebuild_fts.sql",
+    "scripts/rehearse_d1_recovery.mjs",
+    "scripts/rehearse_d1_recovery.ps1",
+    "scripts/start_e2e_server.mjs",
     "src/worker.ts",
     "src/app.ts",
+    "src/audit.ts",
+    "src/auth.ts",
     "src/security.ts",
     "migrations/0001_auth_core.sql",
     "migrations/0002_community_core.sql",
     "migrations/0003_indexes_and_search.sql",
     "migrations/0004_seed_categories_and_settings.sql",
     "migrations/0005_report_race_guard.sql",
+    "migrations/0006_oauth_token_ip_privacy.sql",
+    "migrations/0007_tamper_evident_audit.sql",
     "tests/security.test.ts",
     "tests/authorization.test.ts",
+    "tests/hardening.test.ts",
     "evidence/SOURCE_BASELINE.md",
     "evidence/QA_REPORT.md",
     "evidence/DEPLOYMENT_REPORT.md",
+    "evidence/SECURITY_HARDENING_BASELINE_SHA256.txt",
+    "evidence/SECURITY_HARDENING_REPORT.md",
+    "evidence/SECURITY_HARDENING_RECOVERY.md",
     "evidence/RELEASE_V0.1.md",
     "evidence/FILE_MANIFEST_SHA256.txt",
     ".github/workflows/site-ci.yml",
     ".github/workflows/production-verify.yml",
+    ".github/workflows/codeql.yml",
+    ".github/dependabot.yml",
     ".gitignore",
     "package.json",
     "package-lock.json",
@@ -218,6 +232,9 @@ def main() -> int:
         add(errors, "pages_build_output_dir" not in worker_config, "Pages-only output configuration must not drive the Worker release")
         assets = worker_config.get("assets")
         add(errors, isinstance(assets, dict) and assets.get("directory") == "./public", "Worker static assets directory must be ./public")
+        add(errors, isinstance(assets, dict) and assets.get("binding") == "ASSETS", "Worker static assets binding must be ASSETS")
+        expected_worker_first = ["/", "/tr", "/tr/*", "/de", "/de/*", "/404.html"]
+        add(errors, isinstance(assets, dict) and assets.get("run_worker_first") == expected_worker_first, "Security middleware must run before every HTML static asset")
         add(errors, worker_config.get("observability", {}).get("enabled") is True, "Worker observability must be enabled")
         expected_rate_limits = {
             "AUTH_RATE_LIMITER",
@@ -427,12 +444,52 @@ def main() -> int:
         "Strict-Transport-Security: max-age=31536000",
         "Content-Security-Policy:",
         "script-src https://static.cloudflareinsights.com/beacon.min.js",
+        "connect-src 'self' https://cloudflareinsights.com",
     )
     for header in required_headers:
         add(errors, header in headers, f"Missing security header rule: {header}")
     add(errors, "unsafe-inline" not in headers and "unsafe-eval" not in headers, "CSP contains an unsafe script/style exception")
     csp_line = next((line.strip() for line in headers.splitlines() if line.strip().startswith("Content-Security-Policy:")), "")
     add(errors, "*" not in csp_line, "CSP contains a wildcard source")
+
+    auth_source = (ROOT / "src" / "auth.ts").read_text(encoding="utf-8")
+    audit_source = (ROOT / "src" / "audit.ts").read_text(encoding="utf-8")
+    security_source = (ROOT / "src" / "security.ts").read_text(encoding="utf-8")
+    example_vars = (ROOT / ".dev.vars.example").read_text(encoding="utf-8")
+    add(errors, "encryptOAuthTokens: true" in auth_source, "OAuth access and refresh token encryption must remain enabled")
+    add(errors, "disableIpTracking: true" in auth_source, "Better Auth session IP tracking must remain disabled")
+    add(errors, "AUDIT_INTEGRITY_SECRET=" in example_vars, "The dedicated audit integrity secret binding must remain documented")
+    add(errors, "env.AUDIT_INTEGRITY_SECRET" in audit_source, "Audit HMACs must use the dedicated integrity secret")
+    add(errors, "env.AUTH_SECRET" not in audit_source, "Audit integrity must remain independent from auth-secret rotation")
+    add(errors, "createCspNonce" in security_source and "HTMLRewriter" in security_source, "Worker CSP nonce generation and script rewriting are required")
+    add(errors, "unsafe-inline" not in security_source and "unsafe-eval" not in security_source, "Worker CSP contains an unsafe script exception")
+
+    workflow_paths = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    for workflow_path in workflow_paths:
+        workflow_text = workflow_path.read_text(encoding="utf-8")
+        workflow_name = workflow_path.relative_to(ROOT).as_posix()
+        add(errors, "permissions:" in workflow_text, f"Workflow permissions must be explicit: {workflow_name}")
+        add(errors, "contents: read" in workflow_text, f"Workflow repository contents must remain read-only: {workflow_name}")
+        add(errors, "write-all" not in workflow_text, f"Workflow uses a broad write permission: {workflow_name}")
+        add(errors, "pull_request_target" not in workflow_text, f"Untrusted pull requests must not receive privileged execution: {workflow_name}")
+        for action_reference in re.findall(r"^\s*uses:\s*([^\s#]+)", workflow_text, flags=re.MULTILINE):
+            add(
+                errors,
+                re.fullmatch(r"[^@\s]+@[0-9a-f]{40}", action_reference) is not None,
+                f"GitHub Action must be pinned to a full commit SHA in {workflow_name}: {action_reference}",
+            )
+        if "actions/checkout@" in workflow_text:
+            add(errors, "persist-credentials: false" in workflow_text, f"Checkout credentials must not persist: {workflow_name}")
+    site_ci = (ROOT / ".github" / "workflows" / "site-ci.yml").read_text(encoding="utf-8")
+    add(errors, "run: npm ci" in site_ci, "CI must install only the locked npm dependency graph")
+    add(errors, "npm run test:recovery" in site_ci, "CI must rehearse isolated D1 recovery and the FTS rebuild")
+    add(errors, "npm run test:e2e" in site_ci, "CI must enforce the browser CSP and product workflow tests")
+    e2e_server = (ROOT / "scripts" / "start_e2e_server.mjs").read_text(encoding="utf-8")
+    e2e_setup = (ROOT / "tests" / "e2e" / "global-setup.mjs").read_text(encoding="utf-8")
+    add(errors, '"--persist-to"' in e2e_server, "Browser tests must use an explicit isolated Wrangler persistence directory")
+    add(errors, "mkdtemp" in e2e_server and "tmpdir" in e2e_server, "Browser test persistence must use a unique short OS temporary directory")
+    add(errors, "mh-e2e-state-" in e2e_server and "mh-e2e-state-" in e2e_setup, "Browser test persistence path validation is incomplete")
+    add(errors, "persistenceRelative.startsWith(\"..\")" in e2e_setup, "Browser test setup must reject persistence paths outside the OS temporary directory")
 
     stylesheet = (PUBLIC / "styles.css").read_text(encoding="utf-8")
     add(errors, "prefers-reduced-motion: reduce" in stylesheet, "Reduced-motion support is missing")

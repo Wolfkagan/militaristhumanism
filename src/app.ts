@@ -41,6 +41,7 @@ import {
 import {
   categoryMutationSchema,
   communitySettingSchema,
+  adminSessionRevokeSchema,
   moderationSchema,
   markdownPreviewSchema,
   notificationMutationSchema,
@@ -52,6 +53,7 @@ import {
   reportSchema,
   reportReviewSchema,
   roleMutationSchema,
+  sessionRevokeSchema,
   threadCreateSchema,
   threadRelationshipSchema,
   threadUpdateSchema,
@@ -93,10 +95,13 @@ import {
   listAudit,
   listReports,
   performModeration,
+  revokeOwnSessions,
+  revokeSessionsAsAdmin,
   setCommunityReadOnly,
   updateCategory,
 } from "./admin-data";
 import { recordProductEvent, type ProductEventType } from "./analytics";
+import { verifyAuditIntegrity } from "./audit";
 
 export const app = new Hono<AppBindings>();
 
@@ -144,6 +149,21 @@ app.use("*", securityHeaders);
 app.use("*", async (c, next) => {
   c.set("requestId", crypto.randomUUID());
   c.set("startedAt", Date.now());
+  const pathname = new URL(c.req.url).pathname;
+  if (
+    pathname === "/api/health" ||
+    pathname === "/" ||
+    pathname === "/tr" ||
+    pathname.startsWith("/tr/") ||
+    pathname === "/de" ||
+    pathname.startsWith("/de/") ||
+    pathname === "/404.html"
+  ) {
+    c.set("session", null);
+    c.set("csrfToken", null);
+    await next();
+    return;
+  }
   const session = await readAppSession(c.req.raw, c.env);
   c.set("session", session);
   c.set("csrfToken", session === null ? null : await createCsrfToken(session.id, c.env.AUTH_SECRET));
@@ -173,6 +193,33 @@ app.onError((error, c) => {
   }
   return apiError(c, appError);
 });
+
+const serveProtectedStaticHtml = async (c: Context<AppBindings>): Promise<Response> => {
+  const asset = await c.env.ASSETS.fetch(c.req.raw);
+  return new Response(asset.body, {
+    status: asset.status,
+    statusText: asset.statusText,
+    headers: new Headers(asset.headers),
+  });
+};
+
+function expireSessionCookies(response: Response): void {
+  response.headers.append(
+    "Set-Cookie",
+    "__Secure-better-auth.session_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+  );
+  response.headers.append(
+    "Set-Cookie",
+    "better-auth.session_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+  );
+}
+
+app.get("/", serveProtectedStaticHtml);
+app.get("/tr", serveProtectedStaticHtml);
+app.get("/tr/*", serveProtectedStaticHtml);
+app.get("/de", serveProtectedStaticHtml);
+app.get("/de/*", serveProtectedStaticHtml);
+app.get("/404.html", serveProtectedStaticHtml);
 
 app.get("/api/health", async (c) => {
   const result = await c.env.DB.prepare("SELECT 1 AS healthy").first<{ healthy: number }>();
@@ -521,6 +568,21 @@ app.patch("/api/community/profile", async (c) => {
   return mutationSuccess(c, { updated: true }, safeReturnPath(input.returnTo, `/u/${session.profile.handle}`));
 });
 
+app.post("/api/account/sessions/revoke-all", async (c) => {
+  const input = await parseInput(c.req.raw, sessionRevokeSchema, 16_384);
+  const session = requireSession(c);
+  await requireCsrf(c.req.raw, session.id, c.env.AUTH_SECRET, input.csrf);
+  await enforceRateLimit(c.env.WRITE_RATE_LIMITER, await actorRateKey(c.req.raw, session.user.id, c.env.AUTH_SECRET));
+  const revoked = await revokeOwnSessions(c.env, session.user.id, session.profile.public_id);
+  const response = mutationSuccess(
+    c,
+    { revoked, signedOut: true },
+    safeReturnPath(input.returnTo, "/community/sign-in"),
+  );
+  expireSessionCookies(response);
+  return response;
+});
+
 app.get("/api/notifications", async (c) => {
   const session = requireSession(c);
   return c.json({ notifications: await listNotifications(c.env, session.user.id) });
@@ -600,6 +662,10 @@ app.get("/api/admin/analytics", async (c) => {
   ]);
   return c.json({ points, trends, top });
 });
+app.get("/api/admin/security/audit-integrity", async (c) => {
+  requireRole(c, "admin");
+  return c.json({ audit: await verifyAuditIntegrity(c.env) });
+});
 app.get("/api/admin/reports", async (c) => {
   requireRole(c, "moderator");
   return c.json({ reports: await listReports(c.env, c.req.query("status")) });
@@ -622,6 +688,12 @@ app.patch("/api/admin/users/role", async (c) => {
   const session = await privilegedMutationGuard(c, "admin", input.csrf);
   await changeRole(c.env, session.user.id, input.userId, input.role, input.reason);
   return mutationSuccess(c, { updated: true }, safeReturnPath(input.returnTo, "/admin/users"));
+});
+app.post("/api/admin/sessions/revoke", async (c) => {
+  const input = await parseInput(c.req.raw, adminSessionRevokeSchema);
+  const session = await privilegedMutationGuard(c, "admin", input.csrf);
+  const revoked = await revokeSessionsAsAdmin(c.env, session.user.id, input.targetPublicId, input.reason);
+  return mutationSuccess(c, { revoked }, safeReturnPath(input.returnTo, "/admin/users"));
 });
 app.patch("/api/admin/categories", async (c) => {
   const input = await parseInput(c.req.raw, categoryMutationSchema);

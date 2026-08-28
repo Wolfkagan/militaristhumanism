@@ -1,6 +1,7 @@
 import { AppError } from "./http";
 import type { ReportRow, Role } from "./model";
 import { createPublicId, decodeCursor, encodeCursor } from "./db";
+import { runAuditedBatch } from "./audit";
 
 export interface OverviewStats {
   members: number;
@@ -229,19 +230,21 @@ export async function cleanupRetention(env: Env): Promise<{ notifications: numbe
 }
 
 export async function beginReportReview(env: Env, moderatorId: string, reportPublicId: string): Promise<void> {
-  const result = await env.DB.prepare(
-    `UPDATE reports SET status = 'reviewing', assigned_moderator_id = ?
-     WHERE public_id = ? AND status = 'open'`,
-  )
-    .bind(moderatorId, reportPublicId)
-    .run();
-  if ((result.meta.changes ?? 0) === 0) throw new AppError(409, "REPORT_NOT_OPEN", "The report is no longer open.");
-  await env.DB.prepare(
-    `INSERT INTO audit_events (actor_id, action, target_type, target_public_id)
-     VALUES (?, 'report.review_started', 'report', ?)`,
-  )
-    .bind(moderatorId, reportPublicId)
-    .run();
+  const results = await runAuditedBatch(env, [
+    env.DB.prepare(
+      `UPDATE reports SET status = 'reviewing', assigned_moderator_id = ?
+       WHERE public_id = ? AND status = 'open'`,
+    ).bind(moderatorId, reportPublicId),
+  ], {
+    actorId: moderatorId,
+    action: "report.review_requested",
+    targetType: "report",
+    targetPublicId: reportPublicId,
+  });
+  const result = results[0];
+  if (!result || (result.meta.changes ?? 0) === 0) {
+    throw new AppError(409, "REPORT_NOT_OPEN", "The report is no longer open.");
+  }
 }
 
 export async function listReports(env: Env, status: string | undefined): Promise<ReportRow[]> {
@@ -432,13 +435,14 @@ export async function performModeration(
     }
   }
 
-  statements.push(
-    env.DB.prepare(
-      `INSERT INTO audit_events (actor_id, action, target_type, target_public_id, reason, metadata_json)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).bind(moderatorId, `moderation.${input.action}`, input.targetType, input.targetPublicId, input.reason, JSON.stringify(metadata)),
-  );
-  await env.DB.batch(statements);
+  await runAuditedBatch(env, statements, {
+    actorId: moderatorId,
+    action: `moderation.${input.action}`,
+    targetType: input.targetType,
+    targetPublicId: input.targetPublicId,
+    reason: input.reason,
+    metadata,
+  });
 }
 
 export async function changeRole(
@@ -456,18 +460,21 @@ export async function changeRole(
     .first<{ public_id: string; role: Role }>();
   if (target === null) throw new AppError(404, "USER_NOT_FOUND", "The member was not found.");
   if (target.role === "admin") throw new AppError(403, "ADMIN_ROLE_PROTECTED", "Another administrator cannot be demoted here.");
-  await env.DB.batch([
+  await runAuditedBatch(env, [
     env.DB.prepare("UPDATE user_profiles SET role = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE user_id = ?").bind(role, targetUserId),
     env.DB.prepare(
       `INSERT INTO moderation_actions
        (public_id, moderator_id, target_type, target_public_id, action, reason, metadata_json)
        VALUES (?, ?, 'user', ?, 'role_change', ?, ?)`,
     ).bind(createPublicId("ma"), adminId, target.public_id, reason, JSON.stringify({ from: target.role, to: role })),
-    env.DB.prepare(
-      `INSERT INTO audit_events (actor_id, action, target_type, target_public_id, reason, metadata_json)
-       VALUES (?, 'role.change', 'user', ?, ?, ?)`,
-    ).bind(adminId, target.public_id, reason, JSON.stringify({ from: target.role, to: role })),
-  ]);
+  ], {
+    actorId: adminId,
+    action: "role.change",
+    targetType: "user",
+    targetPublicId: target.public_id,
+    reason,
+    metadata: { from: target.role, to: role },
+  });
 }
 
 export async function updateCategory(
@@ -476,7 +483,7 @@ export async function updateCategory(
   input: { id?: string; name: string; slug: string; description: string; sortOrder: number; isVisible: boolean },
 ): Promise<string> {
   const id = input.id ?? `cat_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
-  await env.DB.batch([
+  await runAuditedBatch(env, [
     env.DB.prepare(
       `INSERT INTO categories (id, slug, name, description, sort_order, is_visible)
        VALUES (?, ?, ?, ?, ?, ?)
@@ -484,25 +491,74 @@ export async function updateCategory(
        description = excluded.description, sort_order = excluded.sort_order, is_visible = excluded.is_visible,
        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
     ).bind(id, input.slug, input.name, input.description, input.sortOrder, input.isVisible ? 1 : 0),
-    env.DB.prepare(
-      `INSERT INTO audit_events (actor_id, action, target_type, target_public_id, metadata_json)
-       VALUES (?, 'category.upsert', 'category', ?, ?)`,
-    ).bind(adminId, id, JSON.stringify({ slug: input.slug, visible: input.isVisible, sortOrder: input.sortOrder })),
-  ]);
+  ], {
+    actorId: adminId,
+    action: "category.upsert",
+    targetType: "category",
+    targetPublicId: id,
+    metadata: { slug: input.slug, visible: input.isVisible, sortOrder: input.sortOrder },
+  });
   return id;
 }
 
 export async function setCommunityReadOnly(env: Env, adminId: string, readOnly: boolean, reason: string): Promise<void> {
-  await env.DB.batch([
+  await runAuditedBatch(env, [
     env.DB.prepare(
       `INSERT INTO community_settings (setting_key, setting_value, updated_by, updated_at)
        VALUES ('community_read_only', ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
        ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value,
        updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
     ).bind(readOnly ? "true" : "false", adminId),
-    env.DB.prepare(
-      `INSERT INTO audit_events (actor_id, action, target_type, target_public_id, reason, metadata_json)
-       VALUES (?, 'community.read_only', 'setting', 'community_read_only', ?, ?)`,
-    ).bind(adminId, reason, JSON.stringify({ readOnly })),
-  ]);
+  ], {
+    actorId: adminId,
+    action: "community.read_only",
+    targetType: "setting",
+    targetPublicId: "community_read_only",
+    reason,
+    metadata: { readOnly },
+  });
+}
+
+export async function revokeOwnSessions(
+  env: Env,
+  userId: string,
+  userPublicId: string,
+): Promise<number> {
+  const results = await runAuditedBatch(env, [
+    env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?').bind(userId),
+  ], {
+    actorId: userId,
+    action: "session.revoke_all",
+    targetType: "user",
+    targetPublicId: userPublicId,
+  });
+  return Number(results[0]?.meta.changes ?? 0);
+}
+
+export async function revokeSessionsAsAdmin(
+  env: Env,
+  adminId: string,
+  targetPublicId: string,
+  reason: string,
+): Promise<number> {
+  const target = await env.DB.prepare("SELECT user_id, role FROM user_profiles WHERE public_id = ?")
+    .bind(targetPublicId)
+    .first<{ user_id: string; role: Role }>();
+  if (target === null) throw new AppError(404, "USER_NOT_FOUND", "The member was not found.");
+  if (target.user_id === adminId) {
+    throw new AppError(409, "SELF_SESSION_REVOKE_USE_ACCOUNT", "Use your account security control for your own sessions.");
+  }
+  if (target.role === "admin") {
+    throw new AppError(403, "ADMIN_SESSION_PROTECTED", "Another administrator's sessions cannot be revoked here.");
+  }
+  const results = await runAuditedBatch(env, [
+    env.DB.prepare('DELETE FROM "session" WHERE "userId" = ?').bind(target.user_id),
+  ], {
+    actorId: adminId,
+    action: "session.admin_revoke",
+    targetType: "user",
+    targetPublicId,
+    reason,
+  });
+  return Number(results[0]?.meta.changes ?? 0);
 }

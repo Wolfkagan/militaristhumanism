@@ -9,7 +9,7 @@ describe("community D1 model", () => {
     const migrations = await testEnv.DB.prepare("SELECT COUNT(*) AS count FROM d1_migrations").first<number>("count");
     const categories = await testEnv.DB.prepare("SELECT COUNT(*) AS count FROM categories").first<number>("count");
     const fts = await testEnv.DB.prepare("SELECT name FROM sqlite_schema WHERE name = 'community_search' AND type = 'table'").first();
-    expect(migrations).toBe(5);
+    expect(migrations).toBe(7);
     expect(categories).toBe(10);
     expect(fts).not.toBeNull();
   });

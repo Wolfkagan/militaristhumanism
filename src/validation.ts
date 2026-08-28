@@ -115,6 +115,18 @@ export const roleMutationSchema = z.object({
   ...csrfFields,
 });
 
+export const sessionRevokeSchema = z.object({
+  returnTo: z.string().max(512).optional(),
+  ...csrfFields,
+});
+
+export const adminSessionRevokeSchema = z.object({
+  targetPublicId: z.string().regex(/^usr_[a-f0-9]{12}$/u, "The member is invalid."),
+  reason: trimmed(8, 2_000, "Reason"),
+  returnTo: z.string().max(512).optional(),
+  ...csrfFields,
+});
+
 export const communitySettingSchema = z.object({
   readOnly: z.enum(["true", "false"]),
   reason: trimmed(8, 2_000, "Reason"),

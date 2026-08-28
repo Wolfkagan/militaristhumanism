@@ -12,15 +12,19 @@ $script:Evidence = New-Object System.Collections.Generic.List[string]
 function Get-Response {
     param(
         [Parameter(Mandatory = $true)][string]$Uri,
-        [ValidateSet("GET", "HEAD")][string]$Method = "GET",
-        [bool]$AllowRedirect = $false
+        [ValidateSet("GET", "HEAD", "OPTIONS")][string]$Method = "GET",
+        [bool]$AllowRedirect = $false,
+        [hashtable]$Headers = @{}
     )
 
     $request = [Net.HttpWebRequest]::Create($Uri)
     $request.Method = $Method
     $request.AllowAutoRedirect = $AllowRedirect
-    $request.UserAgent = "MilitaristHumanism-DeploymentVerifier/0.1"
+    $request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0.0.0 Safari/537.36"
     $request.Timeout = 20000
+    foreach ($name in $Headers.Keys) {
+        $request.Headers[$name] = $Headers[$name]
+    }
     try {
         return [Net.HttpWebResponse]$request.GetResponse()
     }
@@ -62,6 +66,16 @@ function Assert-NotContains {
     }
 }
 
+function Assert-Matches {
+    param([string]$Name, [string]$Actual, [string]$Pattern)
+    if ([string]::IsNullOrEmpty($Actual) -or -not [regex]::IsMatch($Actual, $Pattern)) {
+        $script:Failures.Add("$Name does not match the required pattern")
+    }
+    else {
+        $script:Evidence.Add("$Name=PASS")
+    }
+}
+
 function Read-Body {
     param([Net.HttpWebResponse]$Response)
     $reader = New-Object IO.StreamReader($Response.GetResponseStream())
@@ -94,6 +108,39 @@ try {
             $script:Evidence.Add("HEADER_$($header.ToUpperInvariant())=PASS")
         }
     }
+    $homeCsp = $homeResponse.Headers["Content-Security-Policy"]
+    Assert-Matches "CSP_NONCE" $homeCsp "script-src[^;]*'nonce-[A-Za-z0-9_-]{24}'"
+    Assert-Contains "CSP_ANALYTICS_CONNECT" $homeCsp "connect-src 'self' https://cloudflareinsights.com"
+    Assert-NotContains "CSP_NO_UNSAFE_INLINE" $homeCsp "unsafe-inline"
+    Assert-NotContains "CSP_NO_UNSAFE_EVAL" $homeCsp "unsafe-eval"
+    $nonceMatch = [regex]::Match($homeCsp, "'nonce-([A-Za-z0-9_-]{24})'")
+    $homeNonce = if ($nonceMatch.Success) { $nonceMatch.Groups[1].Value } else { "" }
+
+    $inlineScripts = [regex]::Matches(
+        $html,
+        "<script(?<attributes>[^>]*)>(?<body>[\s\S]*?)</script>",
+        [Text.RegularExpressions.RegexOptions]::IgnoreCase
+    ) | Where-Object { $_.Groups["attributes"].Value -notmatch "\bsrc\s*=" }
+    if ($inlineScripts.Count -eq 0) {
+        $script:Failures.Add("Cloudflare JavaScript Detections inline bootstrap was not observed")
+    }
+    else {
+        $script:Evidence.Add("JSD_INLINE_BOOTSTRAP=OBSERVED")
+    }
+    $nonceAttributePattern = '\bnonce\s*=\s*["' + [char]39 + ']' + [regex]::Escape($homeNonce) + '["' + [char]39 + ']'
+    foreach ($inlineScript in $inlineScripts) {
+        $attributes = $inlineScript.Groups["attributes"].Value
+        if ([string]::IsNullOrEmpty($homeNonce) -or $attributes -notmatch $nonceAttributePattern) {
+            $script:Failures.Add("An inline production script does not carry the response CSP nonce")
+            break
+        }
+    }
+    if ($inlineScripts.Count -gt 0 -and $script:Failures -notcontains "An inline production script does not carry the response CSP nonce") {
+        $script:Evidence.Add("JSD_NONCE_ALIGNMENT=PASS")
+    }
+    Assert-Contains "WEB_ANALYTICS_BEACON" $html "https://static.cloudflareinsights.com/beacon.min.js"
+    Assert-Contains "PUBLIC_CACHE_POLICY" $homeResponse.Headers["Cache-Control"] "public"
+    Assert-Contains "COOKIE_CACHE_VARIANCE" $homeResponse.Headers["Vary"] "Cookie"
     Assert-Contains "CANONICAL_HTML" $html "<link rel=`"canonical`" href=`"$canonical`">"
     Assert-Contains "TITLE_HTML" $html "The Canonical Philosophy"
     Assert-Contains "CANONICAL_DOCTRINE_HTML" $html "Humanity is the end."
@@ -106,6 +153,52 @@ try {
     Assert-NotContains "NO_DRAFT_DOMAIN_HTML" $html $draftDomain
     Assert-NotContains "NO_INSECURE_REFERENCE_HTML" $html "http://"
     $homeResponse.Dispose()
+
+    $communityResponse = Get-Response -Uri "$BaseUrl/community" -Method GET
+    Assert-Equal "COMMUNITY_STATUS" ([int]$communityResponse.StatusCode) 200
+    $communityHtml = Read-Body -Response $communityResponse
+    $communityCsp = $communityResponse.Headers["Content-Security-Policy"]
+    $communityNonceMatch = [regex]::Match($communityCsp, "'nonce-([A-Za-z0-9_-]{24})'")
+    if (-not $communityNonceMatch.Success) {
+        $script:Failures.Add("COMMUNITY_CSP_NONCE is missing")
+    }
+    else {
+        $communityNonce = $communityNonceMatch.Groups[1].Value
+        $script:Evidence.Add("COMMUNITY_CSP_NONCE=PASS")
+        if ($communityNonce -eq $homeNonce) {
+            $script:Failures.Add("CSP nonce was reused across two responses")
+        }
+        else {
+            $script:Evidence.Add("CSP_NONCE_UNIQUENESS=PASS")
+        }
+        Assert-Contains "COMMUNITY_SCRIPT_NONCE" $communityHtml "nonce=`"$communityNonce`""
+    }
+    $communityResponse.Dispose()
+
+    $healthResponse = Get-Response -Uri "$BaseUrl/api/health" -Method GET
+    Assert-Equal "HEALTH_STATUS" ([int]$healthResponse.StatusCode) 200
+    $healthBody = Read-Body -Response $healthResponse
+    Assert-Equal "HEALTH_BODY" $healthBody '{"status":"ok"}'
+    $healthResponse.Dispose()
+
+    $adminResponse = Get-Response -Uri "$BaseUrl/admin/overview" -Method GET
+    Assert-Equal "ANONYMOUS_ADMIN_STATUS" ([int]$adminResponse.StatusCode) 401
+    Assert-Contains "ANONYMOUS_ADMIN_CACHE_PRIVATE" $adminResponse.Headers["Cache-Control"] "private"
+    Assert-Contains "ANONYMOUS_ADMIN_CACHE_NO_STORE" $adminResponse.Headers["Cache-Control"] "no-store"
+    $adminResponse.Dispose()
+
+    $preflightResponse = Get-Response -Uri "$BaseUrl/api/community/threads" -Method OPTIONS -Headers @{
+        "Origin" = "https://malicious.invalid"
+        "Access-Control-Request-Method" = "POST"
+        "Access-Control-Request-Headers" = "content-type,x-csrf-token"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($preflightResponse.Headers["Access-Control-Allow-Origin"])) {
+        $script:Failures.Add("MALICIOUS_PREFLIGHT exposed Access-Control-Allow-Origin")
+    }
+    else {
+        $script:Evidence.Add("MALICIOUS_PREFLIGHT_NO_ACAO=PASS")
+    }
+    $preflightResponse.Dispose()
 
     $resourceChecks = @{
         "ROBOTS_STATUS" = "$BaseUrl/robots.txt"
