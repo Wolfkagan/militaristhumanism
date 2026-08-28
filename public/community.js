@@ -1,6 +1,33 @@
 (() => {
   "use strict";
 
+  function internalDestination(value) {
+    if (
+      typeof value !== "string" ||
+      !value.startsWith("/") ||
+      value.startsWith("//") ||
+      value.includes("\\") ||
+      /[\u0000-\u001F\u007F]/u.test(value)
+    ) {
+      return null;
+    }
+    try {
+      const destination = new URL(value, location.origin);
+      return destination.origin === location.origin ? destination : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function navigateWithinSite(value) {
+    const destination = internalDestination(value);
+    if (destination === null) {
+      location.reload();
+      return;
+    }
+    location.assign(destination.href);
+  }
+
   const forms = document.querySelectorAll("form[data-api-form]");
   for (const form of forms) {
     form.addEventListener("submit", async (event) => {
@@ -31,8 +58,8 @@
         const draftKey = form.dataset.draftKey;
         if (draftKey) localStorage.removeItem(`mh-draft:${draftKey}`);
         const returnField = form.querySelector("input[name='returnTo']");
-        const destination = payload?.thread?.path || (returnField instanceof HTMLInputElement ? returnField.value : location.href);
-        location.assign(destination || location.href);
+        const destination = payload?.thread?.path ?? (returnField instanceof HTMLInputElement ? returnField.value : null);
+        navigateWithinSite(destination);
       } catch (error) {
         if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "The request could not be completed.";
         if (button instanceof HTMLButtonElement) button.disabled = false;

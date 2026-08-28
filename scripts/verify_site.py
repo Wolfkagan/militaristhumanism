@@ -463,6 +463,22 @@ def main() -> int:
     add(errors, "env.AUTH_SECRET" not in audit_source, "Audit integrity must remain independent from auth-secret rotation")
     add(errors, "createCspNonce" in security_source and "HTMLRewriter" in security_source, "Worker CSP nonce generation and script rewriting are required")
     add(errors, "unsafe-inline" not in security_source and "unsafe-eval" not in security_source, "Worker CSP contains an unsafe script exception")
+    for client_script_name in ("community.js", "admin.js"):
+        client_script = (PUBLIC / client_script_name).read_text(encoding="utf-8")
+        add(
+            errors,
+            '!value.startsWith("/")' in client_script
+            and 'value.startsWith("//")' in client_script
+            and 'value.includes("\\\\")' in client_script,
+            f"Client redirect input validation is incomplete: {client_script_name}",
+        )
+        add(
+            errors,
+            "new URL(value, location.origin)" in client_script
+            and "destination.origin === location.origin" in client_script
+            and "location.assign(destination.href)" in client_script,
+            f"Client redirects must use a validated same-origin URL: {client_script_name}",
+        )
 
     workflow_paths = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
     for workflow_path in workflow_paths:
