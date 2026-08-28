@@ -4,15 +4,17 @@ Date: 2026-08-28
 Scope: canonical publication, community Worker, authentication, authorization, D1, Cloudflare edge, CI/CD, recovery, and the production-security candidate
 Baseline: `9cede2704f0abea1cf117853c390694992bdf27f`
 Candidate branch: `codex/production-security-hardening`
-Overall release decision: **HOLD — preview prepared; no production mutation, merge, or deployment performed**
+Overall release decision: **HOLD — production hardening is deployed; live OAuth reauthorization evidence and PR merge remain pending**
 
 ## Executive conclusion
 
 The established application and Cloudflare controls remain substantial and the hardening candidate passes all local source, runtime, browser, build, dependency, and recovery gates. The pushed candidate also passes the complete remote branch Source CI and CodeQL workflows. It adds encrypted OAuth token storage, a strict response nonce, IP minimization, session revocation, tamper-evident audit events, recovery automation, CodeQL, Dependabot, and stronger CI supply-chain controls.
 
-Production is intentionally not declared secure at the candidate level yet. Read-only live checks proved that the currently deployed baseline still has one plaintext/non-envelope OAuth access token, one retained ID token, and one session row with a stored IP value; its CSP does not yet contain the new nonce or Analytics `connect-src`. The managed JavaScript Detections bootstrap is currently delivered without a nonce. The candidate therefore must not be described as deployed to production until the controlled rollout below is completed.
+The sealed candidate is now deployed to production at 100% as Worker version `0361b902-4c82-4af3-9c37-273081d419d8`. A short read-only cutover used version `f4a0def6-91b7-4a06-8792-643b2e7e9fb3`; the prior baseline `3ea38407-2e19-4cbf-a23a-681c391272e1` remains the pre-schema rollback reference only. Production D1 is at seven migrations, the legacy access token, ID token, and session IP were cleared without deleting the account or session, the audit chain is sealed with enforcement active, and live CSP/JSD/Analytics, cache, CORS, health, content, and canonical redirect gates pass.
 
-No credential, token value, IP value, D1 bookmark, or private database identifier was committed to source or evidence. Aggregate queries selected counts only. Production data was not changed.
+The remaining P1 evidence is one real Google OAuth reauthorization followed by an aggregate-only proof that the reacquired access token uses the encrypted envelope while the ID token and session IP remain `NULL`. The available browser is not signed in to the application and no OAuth authorization was initiated without action-time approval. PR #10 therefore remains open and the result remains HOLD rather than overstating completion.
+
+No credential, token value, IP value, D1 bookmark, audit key, or private row value was committed to source or evidence. Aggregate queries selected counts only. The controlled production mutations were the two documented migrations and the single audit-chain state initialization; the account and existing application session were preserved.
 
 ## Chain of custody
 
@@ -20,7 +22,7 @@ No credential, token value, IP value, D1 bookmark, or private database identifie
 - Baseline tree: `43fd486ab3887d1b208ccd61beb4e3f60578e88f`.
 - Baseline manifest: 86 files; manifest SHA-256 `2bf9d7b3d6f1543579f867fe72e8acb8233397e30bb631ba8f7e5c7dfa589462`; check passed.
 - Work was performed in an isolated worktree and branch. The original checkout and synchronized project references were not modified.
-- Sealed code candidate commit: `051329eb382bdb66128c1d0c3a2f042511584379`; tree `b99ea239512e19432d2ff20fd16e22229ac7dcaf`.
+- Sealed code candidate commit: `395de0d4ad8cb3d7154c0582e49132f543c0800c`; tree `8cfd6278a20b311e73b5b3c4894043cc5762823b`.
 - Controlled pull request: <https://github.com/Wolfkagan/militaristhumanism/pull/10>.
 - The final candidate manifest is regenerated only after all evidence and source changes are complete and is excluded from hashing itself.
 
@@ -113,8 +115,10 @@ No credential, token value, IP value, D1 bookmark, or private database identifie
 
 - The production D1 dashboard confirms Time Travel is active with a seven-day restore window. Current-bookmark retrieval was tested read-only.
 - A fresh preview pre-migration bookmark was captured without display and stored as a Windows-current-user DPAPI artifact outside the repository. The bookmark value is absent from terminal evidence, Git, and this report.
+- A fresh production pre-migration bookmark was captured at `2026-08-28T04:44:00Z` and stored separately with Windows CurrentUser DPAPI. No restore was performed.
 - `npm run test:recovery` applies all seven migrations to synthetic data, copies a closed SQLite/FTS5 database into isolation, verifies the matching SHA-256, authoritative row counts, `quick_check`, and FTS rebuildability.
-- Two independent runs produced `RECOVERY_REHEARSAL=PASS`, byte-identical copies, and the same canonical logical snapshot SHA-256 `5dba01b19e11a5fb959b5d95e553390632871e9beed066abaa09e8ba827d5d82`; production mutation was not run.
+- After the D1 trigger-parser compatibility correction, two independent runs produced `RECOVERY_REHEARSAL=PASS`, byte-identical copies, and the same canonical logical snapshot SHA-256 `2e1eb0049932830dfcebecb8bee759f11a3212ee3715f80d57ce822be2d416aa`; no Time Travel restore was run.
+- Wrangler's remote migration parser rejected the original unparenthesized trigger `CASE` with `incomplete input` and atomically rolled back `0007`. Schema inspection proved that no partial `0007` object remained. Parenthesizing `CASE ... END` and enforcing LF for `migrations/*.sql` resolved the known D1/Workers SDK parser edge cases; preview and production then applied `0007` successfully.
 - D1 full export is not treated as a backup when FTS5 virtual tables make it unsupported. Time Travel is primary; a replacement logical database must copy only authoritative ordinary tables and rebuild FTS with `scripts/rebuild_fts.sql`.
 
 ### Supply chain and CI
@@ -128,7 +132,7 @@ No credential, token value, IP value, D1 bookmark, or private database identifie
 - CodeQL uses the current pinned v4 action and `security-extended` JavaScript/TypeScript queries.
 - Dependabot monitors npm and GitHub Actions weekly.
 - Source and Git-history secret scans found zero candidate secret leaks.
-- Pull-request GitHub evidence for candidate `051329e` is green: Source CI run `33139821517` and CodeQL run `33139821498` completed successfully.
+- Pull-request GitHub evidence for sealed candidate `395de0d` is green: Source CI run `33142360219` and CodeQL run `33142360212` completed successfully. GitHub reports six successful checks, no conflicts, and no new CodeQL alert in the changed code.
 - Cloudflare's existing Git integration completed build `b12a529e` for candidate `fa2f140`. Its locked install found zero vulnerabilities and `wrangler versions upload --env production` succeeded, uploading a non-traffic Worker version. No manual production deployment or traffic change was initiated. The long initialization delay coincided with Cloudflare's official Workers Builds degraded-performance incident.
 
 ## Verification results
@@ -150,23 +154,28 @@ No credential, token value, IP value, D1 bookmark, or private database identifie
 | Live anonymous admin | PASS | HTTP 401 |
 | Live malicious CORS preflight | PASS | no ACAO |
 | Live HTTP/`www` redirects | PASS | 301 to HTTPS apex with path/query preservation |
-| Live OAuth token-at-rest | **FAIL** | aggregate-only check: 1 access token not in encrypted envelope; 1 ID token retained |
-| Live CSP/JSD/Analytics | **FAIL** | JSD and Analytics observed, but no response nonce, no Analytics `connect-src`, inline JSD lacks nonce |
-| Live private cache policy | PASS | deployed baseline returns `private, no-store` for health, anonymous admin, and malicious preflight responses; candidate regression coverage remains green |
-| Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
+| Legacy OAuth/IP cleanup | PASS | account/session preserved; access, refresh, ID-token, and session-IP counts are all 0 after migration `0006` |
+| Live OAuth encrypted reacquisition | **HOLD** | one real Google reauthorization and aggregate encrypted-envelope proof remain; no provider identity was authorized without action-time approval |
+| Live CSP/JSD/Analytics | PASS | unique response nonce, no unsafe directives, JSD nonce alignment, Analytics script/connect allow-list, and clean real-Chrome console |
+| Live private cache policy | PASS | health, anonymous admin, API, and malicious preflight responses contain both `private` and `no-store`; directive order is treated as insignificant |
+| Production Time Travel availability | PASS | fresh pre-migration bookmark captured without display and stored with CurrentUser DPAPI; no restore performed |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote PR CI / CodeQL | PASS | sealed code head `051329e`: Source CI run `33139821517` and CodeQL run `33139821498` completed successfully, including browser, recovery, dry-run, and manifest gates |
+| Remote PR CI / CodeQL | PASS | sealed code head `395de0d`: Source CI run `33142360219` and CodeQL run `33142360212`; six GitHub checks successful and no new CodeQL alert |
 | Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
-| GitHub pull request | PASS | PR #10 is open, mergeable, and green; merge remains deliberately gated on the live rollout |
-| Preview candidate Worker | PASS | version `28ac0645` contains candidate `051329e`, the dedicated audit secret, and is deployed at 100% on `militaristhumanism-preview`; rollback version is `0142f3ca` |
-| Dedicated audit secret | HOLD | preview secret is configured and DPAPI-backed; production secret is intentionally not configured before preview gates pass |
-| Preview hostname routing | **HOLD** | `community-preview.militaristhumanism.com` is still attached to the production Worker; preview `workers.dev` and version-preview URLs fail TLS from two independent clients; explicit approval is required to remove/rebind that hostname |
-| Preview hardening migrations | HOLD | preview D1 has 5 applied migrations; `0006`/`0007` and audit-chain initialization remain unapplied until the preview hostname is routed to the isolated Worker |
+| GitHub pull request | PASS | PR #10 is open, mergeable, and green; merge remains deliberately gated only on the live OAuth evidence |
+| Preview candidate Worker | PASS | version `28ac0645` is deployed at 100%; the application bundle was unchanged by the later migration-parser-only commit `395de0d`; rollback version is `0142f3ca` |
+| Dedicated audit secrets | PASS | distinct preview and production values are configured and separately DPAPI-backed; neither value was printed or committed |
+| Preview hostname routing | PASS | `community-preview.militaristhumanism.com` was removed only from the production Worker and bound to `militaristhumanism-preview`; production apex was untouched |
+| Preview hardening migrations | PASS | old-schema gates passed, then migrations reached 7/7 with five audit triggers; accounts, sessions, tokens, IPs, and audit events are all 0 |
+| Preview audit initialization | HOLD | preview has no real admin or OAuth provider configuration; enforcement remains intentionally uninitialized instead of using a synthetic privileged identity |
+| Production Worker rollout | PASS | maintenance version `f4a0def6` completed the cutover; writable version `0361b902` from sealed candidate `395de0d` is deployed at 100% |
+| Production D1 hardening | PASS | 7/7 migrations; account and session preserved; legacy token/IP fields cleared; five audit triggers installed |
+| Production audit integrity | PASS | enforcement enabled, stored head matches the independently recomputed HMAC, and an unchained synthetic insert was rejected with `AUDIT_CHAIN_REQUIRED` without persisting a row |
 | Admin step-up/MFA | HOLD | provider session exposes no reliable MFA/AMR assertion; no false step-up claim was added |
 
 ## Aggregate-only live privacy findings
 
-The production queries returned counts only:
+The pre-migration production queries returned counts only:
 
 - active sessions: 1;
 - sessions with a stored IP value: 1;
@@ -175,27 +184,35 @@ The production queries returned counts only:
 - refresh tokens present: 0;
 - ID tokens present: 1.
 
-These results justify both migration `0006` and the OAuth P1 release block. Better Auth IP tracking is disabled in the candidate, and the migration clears the one legacy session IP without revoking the session. No underlying value was selected.
+Post-migration aggregate-only verification returned:
+
+- active sessions: 1;
+- OAuth accounts: 1;
+- access tokens present: 0;
+- refresh tokens present: 0;
+- ID tokens present: 0;
+- sessions with a stored IP value: 0.
+
+These results prove migration `0006` removed the legacy material without revoking the account or application session. A fresh OAuth login is still required to prove, on the live provider path, that a reacquired access token is stored in the encrypted envelope and that the ID token remains absent. No underlying value was selected.
 
 ## Controlled rollout and rollback
 
-1. Configure distinct random `AUDIT_INTEGRITY_SECRET` values of at least 32 characters in preview and production; never print them and do not reuse `AUTH_SECRET`. Preview is complete; production remains gated.
-2. Push the sealed branch and require source CI plus CodeQL to pass on a controlled pull request. Complete: PR #10 and both checks are green.
-3. Deploy the candidate to isolated preview before migrations; exercise CSP/JSD/Analytics and old-schema audit compatibility. The candidate Worker deployment is complete, but the preview hostname must first be moved from the production Worker to the preview Worker.
-4. Apply preview migrations, call the admin audit-integrity endpoint immediately, verify `valid=true`, and perform aggregate-only token/IP checks plus OAuth reauthorization.
-5. Retrieve and secure a production Time Travel bookmark. Put community/admin writes under controlled maintenance.
-6. Deploy this exact migration-compatible candidate before production migrations so no new plaintext OAuth material can be created.
-7. Apply migrations `0006` and `0007`, invoke audit cutover immediately, then re-run all live gates.
-8. Merge only after the exact deployed commit, manifests, CI, CodeQL, live OAuth envelope, live nonce/JSD/Analytics, cache isolation, and redirects are green.
+1. Complete: distinct preview and production `AUDIT_INTEGRITY_SECRET` values are configured and separately DPAPI-backed; neither reuses `AUTH_SECRET`.
+2. Complete: sealed branch `395de0d` passes Source CI and CodeQL on PR #10.
+3. Complete: the preview hostname is isolated, old-schema compatibility plus CSP/JSD/Analytics gates passed, and preview reached 7/7 migrations.
+4. Complete with an explicit limitation: preview aggregate/schema gates passed, but no fake admin/OAuth identity was created solely to initialize the empty preview audit chain.
+5. Complete: production entered the environment-variable read-only maintenance version and a fresh Time Travel bookmark was DPAPI-protected.
+6. Complete: the migration-compatible candidate and production audit secret were deployed before D1 mutation.
+7. Complete: migrations `0006`/`0007`, atomic audit sealing, trigger enforcement, aggregate privacy checks, and all canonical live gates passed; the normal writable candidate was restored at 100%.
+8. Pending: perform one user-authorized Google OAuth reauthentication, prove the encrypted envelope by counts/pattern only, update evidence/manifest, require final CI, then merge PR #10.
 
 Before the schema changes, the previous Worker can be restored. After `0006`/`0007`, do not roll back to a Worker that lacks token encryption and chained-audit support; keep this candidate or issue a forward hotfix. Use Time Travel only for confirmed data/schema corruption because it overwrites the database in place. The detailed procedure is in `evidence/SECURITY_HARDENING_RECOVERY.md`.
 
 ## Release blockers
 
-- The candidate is not deployed to production, so the two production P1 failures remain real.
-- Preview Worker version `28ac0645` and its dedicated audit secret are ready, and a pre-migration Time Travel bookmark is DPAPI-protected. External preview gates cannot run while `community-preview.militaristhumanism.com` remains attached to the production Worker.
-- Removing that single hostname mapping is a destructive external configuration action and awaits explicit action-time approval; apex and D1 data are not targets.
-- The production audit secret, production bookmark, migrations, OAuth reauthorization, and merge remain intentionally gated on successful preview evidence.
+- The available browser is at the production `Continue with Google` button but is not authenticated to the application. OAuth authorization was not initiated without action-time approval.
+- Until that login completes, the post-migration database correctly contains no provider tokens; the real encrypted-envelope reacquisition gate cannot honestly be marked PASS.
+- PR #10 remains unmerged until that final P1 evidence and the resulting evidence-only CI run pass.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD.
 - The legacy generated-host redirect cannot be confirmed from the current network path.
 

@@ -32,9 +32,11 @@ It does not connect to or mutate preview or production:
 pwsh -NoLogo -NoProfile -File ./scripts/rehearse_d1_recovery.ps1
 ```
 
-The Workers test runtime independently applies these migrations to Cloudflare's D1 implementation. The Node path is used for the file-copy recovery rehearsal because Wrangler's Windows local executor currently fails on otherwise valid multi-statement migration files; individual statements and D1 runtime tests succeed.
+The Workers test runtime independently applies these migrations to Cloudflare's D1 implementation. The Node path is used for the file-copy recovery rehearsal because Wrangler's Windows local executor currently fails on otherwise valid multi-statement migration files; individual statements and D1 runtime tests succeed. Remote D1 initially rejected the unparenthesized trigger `CASE ... END` in migration `0007` with `incomplete input`, rolled the migration back atomically, and left no partial schema object. The migration now uses the D1-compatible parenthesized form, while `.gitattributes` forces LF for all migration SQL; preview and production remote application both succeeded.
 
-Latest isolated result (2026-08-28): two independent runs produced `RECOVERY_REHEARSAL=PASS`, seven migrations, byte-identical copies, authoritative rows, FTS5, and `quick_check`. Both canonical logical snapshots produced SHA-256 `5dba01b19e11a5fb959b5d95e553390632871e9beed066abaa09e8ba827d5d82`. Production mutation: not run.
+Latest isolated result (2026-08-28): two independent runs produced `RECOVERY_REHEARSAL=PASS`, seven migrations, byte-identical copies, authoritative rows, FTS5, and `quick_check`. Both canonical logical snapshots produced SHA-256 `2e1eb0049932830dfcebecb8bee759f11a3212ee3715f80d57ce822be2d416aa`. No Time Travel restore was run.
+
+Production cutover result (2026-08-28): a fresh pre-migration bookmark was captured without display and stored using Windows CurrentUser DPAPI. Maintenance version `f4a0def6` was deployed before migrations, migrations `0006` and `0007` applied successfully, and audit enforcement was enabled with an atomic zero-legacy-row compare-and-set. Aggregate verification preserved one account and one application session while clearing the legacy OAuth token/ID-token/session-IP fields. Writable version `0361b902` is now active at 100%. The Time Travel bookmark was not consumed.
 
 ## Production migration and rollback sequence
 
@@ -59,3 +61,5 @@ Official references:
 
 - <https://developers.cloudflare.com/d1/reference/time-travel/>
 - <https://developers.cloudflare.com/d1/best-practices/import-export-data/>
+- <https://github.com/cloudflare/workers-sdk/issues/4727>
+- <https://github.com/cloudflare/workers-sdk/issues/14991>

@@ -183,7 +183,8 @@ try {
 
     $adminResponse = Get-Response -Uri "$BaseUrl/admin/overview" -Method GET
     Assert-Equal "ANONYMOUS_ADMIN_STATUS" ([int]$adminResponse.StatusCode) 401
-    Assert-Contains "ANONYMOUS_ADMIN_CACHE" $adminResponse.Headers["Cache-Control"] "private, no-store"
+    Assert-Contains "ANONYMOUS_ADMIN_CACHE_PRIVATE" $adminResponse.Headers["Cache-Control"] "private"
+    Assert-Contains "ANONYMOUS_ADMIN_CACHE_NO_STORE" $adminResponse.Headers["Cache-Control"] "no-store"
     $adminResponse.Dispose()
 
     $preflightResponse = Get-Response -Uri "$BaseUrl/api/community/threads" -Method OPTIONS -Headers @{
