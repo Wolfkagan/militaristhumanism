@@ -10,9 +10,9 @@ Overall release decision: **PASS — production hardening is deployed and every 
 
 The established application and Cloudflare controls remain substantial and the hardening candidate passes all local source, runtime, browser, build, dependency, and recovery gates. The pushed candidate also passes the complete remote branch Source CI and CodeQL workflows. It adds encrypted OAuth token storage, a strict response nonce, IP minimization, session revocation, tamper-evident audit events, recovery automation, CodeQL, Dependabot, and stronger CI supply-chain controls.
 
-The sealed candidate is now deployed to production at 100% as Worker version `0361b902-4c82-4af3-9c37-273081d419d8`. A short read-only cutover used version `f4a0def6-91b7-4a06-8792-643b2e7e9fb3`; the prior baseline `3ea38407-2e19-4cbf-a23a-681c391272e1` remains the pre-schema rollback reference only. Production D1 is at seven migrations, the legacy access token, ID token, and session IP were cleared without deleting the account or session, the audit chain is sealed with enforcement active, and live CSP/JSD/Analytics, cache, CORS, health, content, and canonical redirect gates pass.
+The sealed candidate was deployed to production at 100% during the controlled cutover as Worker version `0361b902-4c82-4af3-9c37-273081d419d8`. A short read-only cutover used version `f4a0def6-91b7-4a06-8792-643b2e7e9fb3`; the prior baseline `3ea38407-2e19-4cbf-a23a-681c391272e1` remains the pre-schema rollback reference only. After PR #10 was squash-merged, Cloudflare Git promoted merged-main version `478d44ad` to 100% traffic; the post-merge production verifier passed the same live CSP/JSD/Analytics, cache, CORS, health, content, and canonical redirect gates. Production D1 remains at seven migrations, the audit chain remains sealed with enforcement active, and the legacy access token, ID token, and session IP were cleared without deleting the account or session.
 
-A user-authorized real Google OAuth reauthorization completed on 2026-08-28. The application returned to an authenticated administrator session, and an aggregate-only production D1 query proved that the single reacquired access token matches Better Auth's encrypted envelope while the ID-token and session-IP counts remain zero. PR #10 is therefore release-authorized subject only to its final evidence-only CI run and merge procedure.
+A user-authorized real Google OAuth reauthorization completed on 2026-08-28. The application returned to an authenticated administrator session, and an aggregate-only production D1 query proved that the single reacquired access token matches Better Auth's encrypted envelope while the ID-token and session-IP counts remain zero. PR #10 then passed its final six checks, was squash-merged as `e32f7497bcc47b3fbf577ab1aeacc67dddbaddaf`, and passed main Production verification run `33145746098` plus CodeQL run `33145746122`.
 
 No credential, token value, IP value, D1 bookmark, audit key, or private row value was committed to source or evidence. Aggregate queries selected counts only. The controlled hardening cutover mutations were the two documented migrations and the single audit-chain state initialization; the later user-authorized OAuth callback updated the existing account's encrypted provider-token field and created the expected second application session.
 
@@ -23,6 +23,8 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 - Baseline manifest: 86 files; manifest SHA-256 `2bf9d7b3d6f1543579f867fe72e8acb8233397e30bb631ba8f7e5c7dfa589462`; check passed.
 - Work was performed in an isolated worktree and branch. The original checkout and synchronized project references were not modified.
 - Sealed code candidate commit: `395de0d4ad8cb3d7154c0582e49132f543c0800c`; tree `8cfd6278a20b311e73b5b3c4894043cc5762823b`.
+- Final PR evidence head: `07ffc4b1183682f3d115e54b595fdcf164cadc20`; six of six GitHub checks successful.
+- Squash merge on canonical `main`: `e32f7497bcc47b3fbf577ab1aeacc67dddbaddaf`.
 - Controlled pull request: <https://github.com/Wolfkagan/militaristhumanism/pull/10>.
 - The final candidate manifest is regenerated only after all evidence and source changes are complete and is excluded from hashing itself.
 
@@ -160,16 +162,16 @@ No credential, token value, IP value, D1 bookmark, audit key, or private row val
 | Live CSP/JSD/Analytics | PASS | unique response nonce, no unsafe directives, JSD nonce alignment, Analytics script/connect allow-list, and clean real-Chrome console |
 | Live private cache policy | PASS | health, anonymous admin, API, and malicious preflight responses contain both `private` and `no-store`; directive order is treated as insignificant |
 | Production Time Travel availability | PASS | fresh pre-migration bookmark captured without display and stored with CurrentUser DPAPI; no restore performed |
-| Legacy `pages.dev` redirect | PASS | local regional route times out, but GitHub-hosted production verification run `33143207638` independently passed the root/path/query compatibility redirects |
-| Remote PR CI / CodeQL | PASS | sealed code head `395de0d`: Source CI run `33142360219` and CodeQL run `33142360212`; six GitHub checks successful and no new CodeQL alert |
+| Legacy `pages.dev` redirect | PASS | local regional route times out, but GitHub-hosted runs `33143207638` and post-merge `33145746098` independently passed root/path/query compatibility redirects |
+| Remote PR CI / CodeQL | PASS | sealed code head `395de0d` and final evidence head `07ffc4b` each passed all six PR checks; no new CodeQL alert |
 | Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
-| GitHub pull request | PASS | PR #10 supplied the reviewed delivery path; all candidate checks are successful and the branch is conflict-free at release authorization |
+| GitHub pull request | PASS | PR #10 passed final evidence-only CI, was squash-merged as `e32f7497`, and its main Production verification and CodeQL runs completed successfully |
 | Preview candidate Worker | PASS | version `28ac0645` is deployed at 100%; the application bundle was unchanged by the later migration-parser-only commit `395de0d`; rollback version is `0142f3ca` |
 | Dedicated audit secrets | PASS | distinct preview and production values are configured and separately DPAPI-backed; neither value was printed or committed |
 | Preview hostname routing | PASS | `community-preview.militaristhumanism.com` was removed only from the production Worker and bound to `militaristhumanism-preview`; production apex was untouched |
 | Preview hardening migrations | PASS | old-schema gates passed, then migrations reached 7/7 with five audit triggers; accounts, sessions, tokens, IPs, and audit events are all 0 |
 | Preview audit initialization | HOLD | preview has no real admin or OAuth provider configuration; enforcement remains intentionally uninitialized instead of using a synthetic privileged identity |
-| Production Worker rollout | PASS | maintenance version `f4a0def6` completed the cutover; writable version `0361b902` from sealed candidate `395de0d` is deployed at 100% |
+| Production Worker rollout | PASS | maintenance version `f4a0def6` completed the cutover; writable candidate `0361b902` served the controlled release, then merged-main Git version `478d44ad` reached 100% and passed post-merge live gates |
 | Production D1 hardening | PASS | 7/7 migrations; account and session preserved; legacy token/IP fields cleared; five audit triggers installed |
 | Production audit integrity | PASS | enforcement enabled, stored head matches the independently recomputed HMAC, and an unchained synthetic insert was rejected with `AUDIT_CHAIN_REQUIRED` without persisting a row |
 | Admin step-up/MFA | HOLD | provider session exposes no reliable MFA/AMR assertion; no false step-up claim was added |
@@ -217,14 +219,14 @@ These results prove migration `0006` removed the legacy material without revokin
 5. Complete: production entered the environment-variable read-only maintenance version and a fresh Time Travel bookmark was DPAPI-protected.
 6. Complete: the migration-compatible candidate and production audit secret were deployed before D1 mutation.
 7. Complete: migrations `0006`/`0007`, atomic audit sealing, trigger enforcement, aggregate privacy checks, and all canonical live gates passed; the normal writable candidate was restored at 100%.
-8. Complete: one user-authorized Google OAuth reauthentication proved the encrypted envelope by counts/pattern only; evidence and manifest are updated, with final evidence-only CI required immediately before merging PR #10.
+8. Complete: one user-authorized Google OAuth reauthentication proved the encrypted envelope by counts/pattern only; evidence and manifest were updated, final evidence-only CI passed, PR #10 was squash-merged, and the main production-verification and CodeQL runs passed.
 
 Before the schema changes, the previous Worker can be restored. After `0006`/`0007`, do not roll back to a Worker that lacks token encryption and chained-audit support; keep this candidate or issue a forward hotfix. Use Time Travel only for confirmed data/schema corruption because it overwrites the database in place. The detailed procedure is in `evidence/SECURITY_HARDENING_RECOVERY.md`.
 
 ## Residual limitations and release disposition
 
 - No P0 or P1 production release blocker remains. The real Google OAuth path and its at-rest privacy properties are proven in production.
-- PR #10 is merged only after the resulting evidence-only CI run passes; this is the final delivery procedure, not an unresolved product-security finding.
+- PR #10 was merged only after the resulting evidence-only CI run passed; the post-merge main checks and live production gates also passed.
 - A reliable provider-backed MFA/AMR signal is unavailable; administrator step-up remains an explicit HOLD and is not misrepresented as implemented.
 - Preview audit initialization remains an explicit HOLD because preview has no real privileged identity or OAuth provider configuration. Production audit enforcement is enabled and independently verified.
 
