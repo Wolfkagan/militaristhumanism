@@ -1,5 +1,33 @@
 (() => {
   "use strict";
+
+  function internalDestination(value) {
+    if (
+      typeof value !== "string" ||
+      !value.startsWith("/") ||
+      value.startsWith("//") ||
+      value.includes("\\") ||
+      /[\u0000-\u001F\u007F]/u.test(value)
+    ) {
+      return null;
+    }
+    try {
+      const destination = new URL(value, location.origin);
+      return destination.origin === location.origin ? destination : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function navigateWithinSite(value) {
+    const destination = internalDestination(value);
+    if (destination === null) {
+      location.reload();
+      return;
+    }
+    location.assign(destination.href);
+  }
+
   for (const form of document.querySelectorAll("form[data-api-form]")) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -14,7 +42,7 @@
         const payload = await response.json();
         if (!response.ok) throw new Error(payload?.error?.message || "The request could not be completed.");
         const returnField = form.querySelector("input[name='returnTo']");
-        location.assign(returnField instanceof HTMLInputElement ? returnField.value : location.href);
+        navigateWithinSite(returnField instanceof HTMLInputElement ? returnField.value : null);
       } catch (error) {
         const status = form.querySelector("[data-form-status]");
         if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "The request could not be completed.";

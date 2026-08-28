@@ -97,6 +97,66 @@ test("visitor experience is responsive, accessible, and free of browser errors",
   expect(failedAssets).toEqual([]);
 });
 
+test("form redirects allow only same-origin path destinations", async ({ page }) => {
+  let fixtureLoads = 0;
+  await page.route("**/navigation-fixture**", async (route) => {
+    fixtureLoads += 1;
+    const scriptName = new URL(route.request().url()).searchParams.get("script");
+    if (scriptName !== "community" && scriptName !== "admin") {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><html><head><meta charset=\"utf-8\"><title>Navigation fixture</title></head><body>" +
+        "<form data-api-form action=\"/api/navigation-test\" method=\"post\">" +
+        "<input type=\"hidden\" name=\"returnTo\" value=\"/community\">" +
+        "<button type=\"submit\">Submit</button><p data-form-status></p></form>" +
+        "<script src=\"/" + scriptName + ".js\" defer></script></body></html>",
+    });
+  });
+  await page.route("**/api/navigation-test", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+
+  for (const scriptName of ["community", "admin"] as const) {
+    const fixturePath = "/navigation-fixture?script=" + scriptName;
+    const marker = "executed-" + scriptName;
+    const unsafeDestinations = [
+      "javascript:document.documentElement.dataset.navigationXss='" + marker + "'",
+      "//example.invalid/redirected",
+      "/\\example.invalid/redirected",
+      "data:text/html,<title>unsafe</title>",
+    ];
+    for (const unsafeDestination of unsafeDestinations) {
+      await page.goto(fixturePath);
+      const fixtureUrl = new URL(page.url());
+      const initialLoads = fixtureLoads;
+      await page.locator("input[name='returnTo']").evaluate(
+        (element, value) => {
+          (element as HTMLInputElement).value = value;
+        },
+        unsafeDestination,
+      );
+      await page.getByRole("button", { name: "Submit" }).click();
+      await expect.poll(() => fixtureLoads).toBe(initialLoads + 1);
+      expect(new URL(page.url()).origin).toBe(fixtureUrl.origin);
+      expect(new URL(page.url()).pathname).toBe("/navigation-fixture");
+      expect(await page.locator("html").getAttribute("data-navigation-xss")).toBeNull();
+    }
+
+    await page.goto(fixturePath);
+    await page.locator("input[name='returnTo']").evaluate((element) => {
+      (element as HTMLInputElement).value = "/community/rules";
+    });
+    await Promise.all([
+      page.waitForURL((url) => url.pathname === "/community/rules"),
+      page.getByRole("button", { name: "Submit" }).click(),
+    ]);
+  }
+});
+
 test("member, moderator, and admin complete the community workflow", async ({ page }, testInfo) => {
   const memberIds = ["e2e-member", "e2e-member-r1", "e2e-member-r2"] as const;
   const memberId = memberIds[testInfo.repeatEachIndex];
