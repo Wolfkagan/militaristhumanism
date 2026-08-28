@@ -155,7 +155,7 @@ No credential, token value, IP value, D1 bookmark, or private database identifie
 | Live private cache policy | PASS | deployed baseline returns `private, no-store` for health, anonymous admin, and malicious preflight responses; candidate regression coverage remains green |
 | Production Time Travel availability | PASS | dashboard window and read-only bookmark retrieval verified |
 | Legacy `pages.dev` redirect from this host | HOLD | canonical checks pass; compatibility host timed out locally |
-| Remote PR CI / CodeQL | PASS | final head `051329e`: Source CI run `33139821517` and CodeQL run `33139821498` completed successfully, including browser, recovery, dry-run, and manifest gates |
+| Remote PR CI / CodeQL | PASS | sealed code head `051329e`: Source CI run `33139821517` and CodeQL run `33139821498` completed successfully, including browser, recovery, dry-run, and manifest gates |
 | Cloudflare Git branch build | PASS | build `27bba2df` for corrected candidate `f5cb65c` completed successfully; dependencies audited at 0 vulnerabilities and `wrangler versions upload` created a non-traffic version only |
 | GitHub pull request | PASS | PR #10 is open, mergeable, and green; merge remains deliberately gated on the live rollout |
 | Preview candidate Worker | PASS | version `28ac0645` contains candidate `051329e`, the dedicated audit secret, and is deployed at 100% on `militaristhumanism-preview`; rollback version is `0142f3ca` |
